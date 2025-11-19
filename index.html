@@ -2,41 +2,176 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Configuración para iPhone para que se vea pantalla completa y respete el 'notch' -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Gestor Financiero</title>
     
-    <!-- Estilos y Fuentes -->
+    <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- CONFIGURACIÓN APP MÓVIL (PWA) -->
+    <!-- CONFIGURACIÓN PWA (Para que funcione como App) -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Mi Presupuesto">
+    <meta name="apple-mobile-web-app-title" content="Finanzas">
     <link rel="apple-touch-icon" href="icon.png">
 
-    <!-- Tu CSS original (sin cambios) -->
+    <!-- ESTILOS (CSS) - AQUÍ ESTÁ EL DISEÑO VISUAL -->
     <style>
-        /* ... PEGA AQUÍ TODO EL CSS QUE YA TENÍAS EN EL CÓDIGO ANTERIOR ... */
-        /* Asegúrate de incluir todo el estilo que te di en la respuesta anterior */
-        :root { --bg-color: #121212; /* etc... */ }
-        /* ... resto del css ... */
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e2f;
+            --text-color: #e0e0e0;
+            --accent-green: #00d26a;
+            --accent-red: #f73859;
+            --accent-blue: #3d84ff;
+            --input-bg: #2c2c44;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            /* Ajuste para el área segura del iPhone (notch/isla dinámica) */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding-bottom: 40px; /* Espacio extra abajo para scroll en móvil */
+        }
+
+        @media(min-width: 768px) {
+            .container { grid-template-columns: 1fr 1fr; }
+            .header, .stats, .recommendation-box, .toolbar { grid-column: span 2; }
+        }
+
+        .header { text-align: center; margin-bottom: 10px; margin-top: 10px; }
+        .header h1 {
+            font-weight: 600;
+            background: linear-gradient(90deg, #3d84ff, #00d26a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        h2 { font-size: 1.2rem; margin-bottom: 15px; color: #8f90a6; }
+
+        /* Toolbar Buttons */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn-tool {
+            flex: 1;
+            background-color: #2c2c44;
+            color: white;
+            padding: 12px;
+            border: 1px solid #3d84ff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* Inputs */
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #8f90a6; }
+        input {
+            width: 100%; padding: 14px; background-color: var(--input-bg); /* Inputs más grandes para dedo */
+            border: 1px solid transparent; border-radius: 8px; color: white;
+            font-size: 1rem; margin-bottom: 10px;
+        }
+        input:focus { outline: none; border-color: var(--accent-blue); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+        button.action-btn {
+            width: 100%; padding: 14px; border: none; border-radius: 8px;
+            font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.1s;
+        }
+        button.action-btn:active { transform: scale(0.96); }
+        .btn-income { background-color: var(--accent-blue); color: white; }
+        .btn-expense { background-color: var(--accent-red); color: white; margin-top: 5px;}
+
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .stat-item { background: var(--card-bg); padding: 12px 5px; border-radius: 12px; text-align: center; border: 1px solid #2c2c44; }
+        .stat-label { font-size: 0.75rem; color: #8f90a6; }
+        .stat-value { font-size: 1.1rem; font-weight: bold; margin-top: 5px; word-wrap: break-word;}
+        .val-green { color: var(--accent-green); }
+        .val-red { color: var(--accent-red); }
+        .val-white { color: white; }
+
+        /* Chart & List */
+        .chart-container { position: relative; height: 220px; width: 100%; }
+        .expenses-list { max-height: 300px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .expense-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #2c2c44; font-size: 0.95rem;
+        }
+        .expense-info { display: flex; flex-direction: column; text-align: left; }
+        .expense-date { font-size: 0.8rem; color: #8f90a6; margin-top: 4px; }
+        
+        .tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+        .tag-warning { background: rgba(255, 159, 67, 0.2); color: #ff9f43; }
+        .tag-danger { background: rgba(247, 56, 89, 0.2); color: #f73859; }
+        .tag-ok { background: rgba(0, 210, 106, 0.2); color: #00d26a; }
+
+        .recommendation-box { padding: 15px; border-radius: 12px; text-align: center; font-weight: 600; background-color: #2c2c44; font-size: 0.95rem; line-height: 1.4;}
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .modal-content {
+            background: white; color: black; width: 90%; max-width: 500px;
+            padding: 25px; border-radius: 12px; max-height: 85vh; overflow-y: auto;
+        }
+        .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        .preview-table th, .preview-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .preview-table th { background-color: #f2f2f2; }
+
+        /* IMPRESIÓN */
+        @media print {
+            body { background-color: white; color: black; display: block; }
+            .container { max-width: 100%; display: block; }
+            .card { box-shadow: none; border: none; margin-bottom: 20px; background-color: white; color: black; }
+            .input-group, .btn-income, .btn-expense, .toolbar, button { display: none !important; }
+            .stat-item { border: 1px solid #ccc; }
+            .stat-value { color: black !important; }
+            .modal-overlay { display: none; }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="header">
-            <h1>Control Financiero</h1>
-            <p>Gestión Inteligente de Presupuesto</p>
+            <h1>Gestor Financiero</h1>
+            <p>Control total de tu dinero</p>
         </div>
 
         <!-- Toolbar -->
         <div class="toolbar">
-            <button class="btn-tool" onclick="resetData()">🗑️ Borrar Todo</button>
-            <button class="btn-tool" onclick="openPreview()">📄 Previsualizar Reporte</button>
+            <button class="btn-tool" onclick="resetData()">🗑️ Borrar</button>
+            <button class="btn-tool" onclick="openPreview()">📄 Ver Reporte</button>
             <button class="btn-tool" onclick="window.print()">🖨️ Imprimir</button>
         </div>
 
@@ -58,11 +193,11 @@
 
         <!-- Input Section -->
         <div class="card">
-            <h2>Registrar Movimientos</h2>
+            <h2>Registrar</h2>
             
             <div class="input-group">
                 <label>Ingreso Mensual</label>
-                <input type="number" id="incomeInput" placeholder="Ej: 25000">
+                <input type="number" id="incomeInput" placeholder="Ej: 25000" inputmode="numeric">
                 <button class="action-btn btn-income" onclick="setIncome()">Guardar Ingreso</button>
             </div>
             
@@ -70,14 +205,14 @@
 
             <div class="input-group">
                 <label>Nuevo Gasto</label>
-                <input type="text" id="expenseDesc" placeholder="Concepto (Ej: Renta)">
+                <input type="text" id="expenseDesc" placeholder="Concepto (Ej: Supermercado)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
-                        <label style="font-size: 0.75rem;">Cantidad</label>
-                        <input type="number" id="expenseAmount" placeholder="$">
+                        <label style="font-size: 0.75rem;">Monto</label>
+                        <input type="number" id="expenseAmount" placeholder="$" inputmode="decimal">
                     </div>
                     <div>
-                        <label style="font-size: 0.75rem;">Límite de Pago</label>
+                        <label style="font-size: 0.75rem;">Fecha Límite</label>
                         <input type="date" id="expenseDate">
                     </div>
                 </div>
@@ -87,56 +222,49 @@
 
         <!-- Chart & List Section -->
         <div class="card">
-            <h2>Gráfico de Balance</h2>
+            <h2>Balance Visual</h2>
             <div class="chart-container">
                 <canvas id="budgetChart"></canvas>
             </div>
         </div>
 
         <div class="card">
-            <h2>Historial de Gastos</h2>
+            <h2>Historial</h2>
             <div class="expenses-list" id="expensesList">
                 <div style="text-align: center; color: #555; margin-top: 20px;">Cargando datos...</div>
             </div>
         </div>
 
         <div class="recommendation-box" id="recommendation">
-            Esperando datos...
+            Analizando finanzas...
         </div>
     </div>
 
-    <!-- MODAL PARA PREVISUALIZACIÓN -->
+    <!-- MODAL PREVIEW -->
     <div class="modal-overlay" id="previewModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Reporte Mensual</h2>
-                <button onclick="closePreview()" style="width:auto; padding: 5px 15px; background: #f73859; color: white; border:none; cursor:pointer;">X</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2>Reporte</h2>
+                <button onclick="closePreview()" style="padding:8px 12px; background:#f73859; color:white; border:none; border-radius:6px; font-weight:bold;">Cerrar</button>
             </div>
-            <div id="modalBody">
-                <!-- Tabla generada por JS -->
-            </div>
-            <button onclick="window.print()" style="margin-top:20px; width:100%; padding:10px; background:#3d84ff; color:white; border:none; cursor:pointer;">🖨️ Imprimir Reporte</button>
+            <div id="modalBody"></div>
         </div>
     </div>
 
     <script>
-        // -- 1. Inicialización y Variables --
         let totalIncome = 0;
         let expensesArr = [];
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
-        // Configuración Chart.js
         const ctx = document.getElementById('budgetChart').getContext('2d');
         let myChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Ingresos', 'Gastos', 'Restante'],
+                labels: ['Ingresos', 'Gastos', 'Libre'],
                 datasets: [{
-                    label: 'Montos',
                     data: [0, 0, 0],
-                    backgroundColor: ['rgba(0, 210, 106, 0.6)', 'rgba(247, 56, 89, 0.6)', 'rgba(61, 132, 255, 0.6)'],
-                    borderColor: ['rgba(0, 210, 106, 1)', 'rgba(247, 56, 89, 1)', 'rgba(61, 132, 255, 1)'],
-                    borderWidth: 1
+                    backgroundColor: ['#00d26a', '#f73859', '#3d84ff'],
+                    borderRadius: 6
                 }]
             },
             options: {
@@ -150,20 +278,11 @@
             }
         });
 
-        // -- 2. Cargar Datos al Inicio --
         window.onload = function() {
             loadData();
-            requestNotificationPermission();
             checkReminders();
         };
 
-        function requestNotificationPermission() {
-            if ("Notification" in window && Notification.permission !== "granted") {
-                Notification.requestPermission();
-            }
-        }
-
-        // -- 3. Persistencia (LocalStorage) --
         function saveData() {
             localStorage.setItem('budgetIncome', totalIncome);
             localStorage.setItem('budgetExpenses', JSON.stringify(expensesArr));
@@ -173,16 +292,14 @@
         function loadData() {
             const storedIncome = localStorage.getItem('budgetIncome');
             const storedExpenses = localStorage.getItem('budgetExpenses');
-
             if (storedIncome) totalIncome = parseFloat(storedIncome);
             if (storedExpenses) expensesArr = JSON.parse(storedExpenses);
-
             updateUI();
             renderList();
         }
 
         function resetData() {
-            if(confirm("¿Estás seguro de borrar todos los datos?")) {
+            if(confirm("¿Borrar todos los datos?")) {
                 localStorage.clear();
                 totalIncome = 0;
                 expensesArr = [];
@@ -191,7 +308,6 @@
             }
         }
 
-        // -- 4. Lógica de Negocio --
         function setIncome() {
             const input = document.getElementById('incomeInput');
             const val = parseFloat(input.value);
@@ -210,37 +326,20 @@
             const amount = parseFloat(amountInput.value);
             const dateVal = dateInput.value;
 
-            // Validaciones
             if(desc === '' || isNaN(amount) || amount <= 0 || dateVal === '') {
-                return alert("Completa todos los campos correctamente.");
-            }
-
-            // Validación de fecha (Advertencia si es pasado)
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            const inputDate = new Date(dateVal + 'T00:00:00');
-
-            if (inputDate < today) {
-                if(!confirm("⚠️ Estás registrando una fecha pasada. ¿Es correcto?")) return;
+                return alert("Faltan datos del gasto.");
             }
 
             expensesArr.push({ desc, amount, date: dateVal });
-            
-            descInput.value = '';
-            amountInput.value = '';
-            dateInput.value = '';
-            
-            saveData(); // Guarda y actualiza
-            renderList();
+            descInput.value = ''; amountInput.value = ''; dateInput.value = '';
+            saveData(); renderList();
         }
 
-        // -- 5. Renderizado y UI --
         function renderList() {
             const listContainer = document.getElementById('expensesList');
             listContainer.innerHTML = '';
-
             if(expensesArr.length === 0) {
-                listContainer.innerHTML = '<div style="text-align: center; color: #555; margin-top: 20px;">Sin gastos registrados</div>';
+                listContainer.innerHTML = '<div style="text-align: center; color: #555; margin-top: 20px;">Sin gastos</div>';
                 return;
             }
 
@@ -251,22 +350,20 @@
                 const dateObj = new Date(item.date + 'T00:00:00');
                 const dateStr = dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
                 
-                // Lógica de etiquetas
                 let tagHTML = '';
                 const diffTime = dateObj - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                 if (diffDays < 0) tagHTML = '<span class="tag tag-danger">Vencido</span>';
-                else if (diffDays === 0) tagHTML = '<span class="tag tag-danger">¡Vence Hoy!</span>';
-                else if (diffDays === 1) tagHTML = '<span class="tag tag-warning">Vence Mañana</span>';
-                else tagHTML = '<span class="tag tag-ok">A tiempo</span>';
+                else if (diffDays === 0) tagHTML = '<span class="tag tag-danger">Hoy</span>';
+                else if (diffDays === 1) tagHTML = '<span class="tag tag-warning">Mañana</span>';
 
                 const div = document.createElement('div');
                 div.className = 'expense-item';
                 div.innerHTML = `
                     <div class="expense-info">
                         <span style="font-weight:600">${item.desc} ${tagHTML}</span>
-                        <span class="expense-date">📅 Límite: ${dateStr}</span>
+                        <span class="expense-date">📅 ${dateStr}</span>
                     </div>
                     <span style="color: var(--accent-red); font-weight:bold;">- ${moneyFormat.format(item.amount)}</span>
                 `;
@@ -281,93 +378,54 @@
             document.getElementById('displayIncome').innerText = moneyFormat.format(totalIncome);
             document.getElementById('displayExpenses').innerText = moneyFormat.format(totalExp);
             document.getElementById('displayBalance').innerText = moneyFormat.format(balance);
-
+            
             const balElem = document.getElementById('displayBalance');
-            if(balance < 0) balElem.className = 'stat-value val-red';
-            else balElem.className = 'stat-value val-green';
+            balElem.className = balance < 0 ? 'stat-value val-red' : 'stat-value val-green';
 
             myChart.data.datasets[0].data = [totalIncome, totalExp, balance];
             myChart.update();
-
             generateRecommendation(balance, totalIncome);
         }
 
-        // -- 6. Notificaciones Inteligentes --
         function checkReminders() {
-            if (!("Notification" in window)) return;
-            if (Notification.permission !== "granted") return;
-
-            const today = new Date();
-            today.setHours(0,0,0,0);
-
+            if (!("Notification" in window) || Notification.permission !== "granted") return;
+            const today = new Date(); today.setHours(0,0,0,0);
             expensesArr.forEach(item => {
                 const dateObj = new Date(item.date + 'T00:00:00');
-                const diffTime = dateObj - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays === 1) {
-                    new Notification("⚠️ Recordatorio de Pago", {
-                        body: `Mañana vence el pago de: ${item.desc} (${moneyFormat.format(item.amount)})`
-                    });
-                } else if (diffDays === 0) {
-                    new Notification("🚨 ¡Atención!", {
-                        body: `HOY vence el pago de: ${item.desc}`
-                    });
+                const diffDays = Math.ceil((dateObj - today) / (1000 * 60 * 60 * 24));
+                if (diffDays === 1 || diffDays === 0) {
+                    new Notification("Recordatorio de Pago", { body: `Vence: ${item.desc}` });
                 }
             });
         }
 
-        // -- 7. Reporte y Previsualización --
         function openPreview() {
-            const modal = document.getElementById('previewModal');
             const body = document.getElementById('modalBody');
-            
+            let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
             let html = `
-                <div style="margin-bottom: 20px;">
-                    <p><strong>Ingresos:</strong> ${moneyFormat.format(totalIncome)}</p>
-                    <p><strong>Gastos Totales:</strong> ${moneyFormat.format(expensesArr.reduce((a,b)=>a+b.amount,0))}</p>
-                    <p><strong>Balance Final:</strong> ${moneyFormat.format(totalIncome - expensesArr.reduce((a,b)=>a+b.amount,0))}</p>
+                <div style="margin-bottom:15px; border-bottom:1px solid #ccc; padding-bottom:10px;">
+                    <p>Ingresos: <strong>${moneyFormat.format(totalIncome)}</strong></p>
+                    <p>Gastos: <strong>${moneyFormat.format(totalExp)}</strong></p>
+                    <p>Balance: <strong>${moneyFormat.format(totalIncome - totalExp)}</strong></p>
                 </div>
-                <table class="preview-table">
-                    <thead>
-                        <tr><th>Concepto</th><th>Fecha Límite</th><th>Monto</th></tr>
-                    </thead>
-                    <tbody>
-            `;
-
+                <table class="preview-table"><thead><tr><th>Gasto</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>`;
             expensesArr.forEach(item => {
-                html += `<tr>
-                    <td>${item.desc}</td>
-                    <td>${item.date}</td>
-                    <td>${moneyFormat.format(item.amount)}</td>
-                </tr>`;
+                html += `<tr><td>${item.desc}</td><td>${item.date}</td><td>${moneyFormat.format(item.amount)}</td></tr>`;
             });
-
             html += `</tbody></table>`;
-            
             body.innerHTML = html;
-            modal.style.display = 'flex';
+            document.getElementById('previewModal').style.display = 'flex';
         }
 
-        function closePreview() {
-            document.getElementById('previewModal').style.display = 'none';
-        }
+        function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
         function generateRecommendation(balance, income) {
             const box = document.getElementById('recommendation');
-            if (income === 0) return box.innerText = "Registra ingresos para comenzar.";
-            
-            const percentageLeft = (balance / income) * 100;
-            if (balance < 0) {
-                box.style.color = '#f73859';
-                box.innerHTML = "⚠️ DÉFICIT: Estás gastando más de lo que ganas. ¡Revisa tus gastos urgentes!";
-            } else if (percentageLeft < 10) {
-                box.style.color = '#ff9f43';
-                box.innerHTML = "✋ CUIDADO: Queda menos del 10%. No hagas gastos innecesarios.";
-            } else {
-                box.style.color = '#00d26a';
-                box.innerHTML = "🚀 BIEN: Tienes finanzas saludables. ¡Considera ahorrar el excedente!";
-            }
+            if (income === 0) return box.innerText = "Registra ingresos...";
+            const pct = (balance / income) * 100;
+            if (balance < 0) { box.style.color = '#f73859'; box.innerHTML = "⚠️ Estás en déficit."; }
+            else if (pct < 10) { box.style.color = '#ff9f43'; box.innerHTML = "✋ Cuidado, <10% libre."; }
+            else { box.style.color = '#00d26a'; box.innerHTML = "🚀 Finanzas sanas."; }
         }
     </script>
 </body>
