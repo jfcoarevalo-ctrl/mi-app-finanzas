@@ -2,23 +2,24 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Configuración para iPhone para que se vea pantalla completa y respete el 'notch' -->
+    <!-- Configuración móvil -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gestor Financiero</title>
+    <title>Gestor Financiero Pro</title>
     
     <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Librería Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Librería PDF (NUEVA) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    <!-- CONFIGURACIÓN PWA (Para que funcione como App) -->
+    <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Finanzas">
     <link rel="apple-touch-icon" href="icon.png">
 
-    <!-- ESTILOS (CSS) - AQUÍ ESTÁ EL DISEÑO VISUAL -->
     <style>
         :root {
             --bg-color: #121212;
@@ -39,7 +40,6 @@
             justify-content: center;
             min-height: 100vh;
             padding: 20px;
-            /* Ajuste para el área segura del iPhone (notch/isla dinámica) */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
@@ -50,7 +50,7 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
-            padding-bottom: 40px; /* Espacio extra abajo para scroll en móvil */
+            padding-bottom: 50px;
         }
 
         @media(min-width: 768px) {
@@ -77,7 +77,7 @@
         h2 { font-size: 1.2rem; margin-bottom: 15px; color: #8f90a6; }
 
         /* Toolbar Buttons */
-        .toolbar { display: flex; gap: 10px; margin-bottom: 10px; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;}
         .btn-tool {
             flex: 1;
             background-color: #2c2c44;
@@ -88,13 +88,15 @@
             cursor: pointer;
             font-size: 0.85rem;
             font-weight: 500;
+            min-width: 100px;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
         }
 
         /* Inputs */
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #8f90a6; }
         input {
-            width: 100%; padding: 14px; background-color: var(--input-bg); /* Inputs más grandes para dedo */
+            width: 100%; padding: 14px; background-color: var(--input-bg);
             border: 1px solid transparent; border-radius: 8px; color: white;
             font-size: 1rem; margin-bottom: 10px;
         }
@@ -135,28 +137,60 @@
 
         .recommendation-box { padding: 15px; border-radius: 12px; text-align: center; font-weight: 600; background-color: #2c2c44; font-size: 0.95rem; line-height: 1.4;}
 
-        /* MODAL */
+        /* === MODAL Y REPORTE MEJORADO === */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999;
         }
         .modal-content {
-            background: white; color: black; width: 90%; max-width: 500px;
-            padding: 25px; border-radius: 12px; max-height: 85vh; overflow-y: auto;
+            background: var(--card-bg); color: var(--text-color); 
+            width: 95%; max-width: 600px; padding: 25px; 
+            border-radius: 12px; max-height: 90vh; overflow-y: auto;
+            border: 1px solid #3d84ff; /* Borde neón para el reporte */
         }
-        .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-        .preview-table th, .preview-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .preview-table th { background-color: #f2f2f2; }
 
-        /* IMPRESIÓN */
+        /* Estilos de la Tabla del Reporte */
+        .report-header { 
+            text-align: center; margin-bottom: 20px; 
+            border-bottom: 2px solid #3d84ff; padding-bottom: 10px;
+        }
+        .report-summary {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; 
+            gap: 10px; margin-bottom: 20px; text-align: center;
+        }
+        .report-box { background: #121212; padding: 10px; border-radius: 8px; }
+        
+        .preview-table { 
+            width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white;
+        }
+        .preview-table th { 
+            background-color: #3d84ff; color: white; padding: 10px; text-align: left; 
+        }
+        .preview-table td { 
+            border-bottom: 1px solid #444; padding: 10px; 
+        }
+        .preview-table tr:nth-child(even) { background-color: #2c2c44; }
+
+        /* === CONFIGURACIÓN DE IMPRESIÓN / PDF === */
+        /* Esto asegura que al exportar, salga el fondo oscuro */
         @media print {
-            body { background-color: white; color: black; display: block; }
-            .container { max-width: 100%; display: block; }
-            .card { box-shadow: none; border: none; margin-bottom: 20px; background-color: white; color: black; }
-            .input-group, .btn-income, .btn-expense, .toolbar, button { display: none !important; }
-            .stat-item { border: 1px solid #ccc; }
-            .stat-value { color: black !important; }
-            .modal-overlay { display: none; }
+            body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+                background-color: #121212 !important;
+                color: white !important;
+            }
+            /* Ocultamos la interfaz de la app al imprimir directamente */
+            .container > .header, .toolbar, .stats, .card, .recommendation-box { display: none; }
+            
+            /* Mostramos solo el reporte si se imprime desde el modal */
+            .modal-overlay { 
+                display: block !important; position: static; background: #121212; 
+            }
+            .modal-content { 
+                width: 100%; border: none; box-shadow: none; overflow: visible; 
+            }
+            button { display: none !important; }
         }
     </style>
 </head>
@@ -165,14 +199,13 @@
     <div class="container">
         <div class="header">
             <h1>Gestor Financiero</h1>
-            <p>Control total de tu dinero</p>
+            <p>Panel de Control</p>
         </div>
 
         <!-- Toolbar -->
         <div class="toolbar">
             <button class="btn-tool" onclick="resetData()">🗑️ Borrar</button>
-            <button class="btn-tool" onclick="openPreview()">📄 Ver Reporte</button>
-            <button class="btn-tool" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn-tool" onclick="openPreview()">📄 Reporte</button>
         </div>
 
         <!-- Stats Summary -->
@@ -191,28 +224,25 @@
             </div>
         </div>
 
-        <!-- Input Section -->
+        <!-- Inputs y Gráficos (Sin cambios en lógica) -->
         <div class="card">
             <h2>Registrar</h2>
-            
             <div class="input-group">
                 <label>Ingreso Mensual</label>
                 <input type="number" id="incomeInput" placeholder="Ej: 25000" inputmode="numeric">
                 <button class="action-btn btn-income" onclick="setIncome()">Guardar Ingreso</button>
             </div>
-            
             <hr style="border-color: #2c2c44; margin: 20px 0;">
-
             <div class="input-group">
                 <label>Nuevo Gasto</label>
-                <input type="text" id="expenseDesc" placeholder="Concepto (Ej: Supermercado)">
+                <input type="text" id="expenseDesc" placeholder="Concepto">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label style="font-size: 0.75rem;">Monto</label>
                         <input type="number" id="expenseAmount" placeholder="$" inputmode="decimal">
                     </div>
                     <div>
-                        <label style="font-size: 0.75rem;">Fecha Límite</label>
+                        <label style="font-size: 0.75rem;">Fecha</label>
                         <input type="date" id="expenseDate">
                     </div>
                 </div>
@@ -220,34 +250,54 @@
             </div>
         </div>
 
-        <!-- Chart & List Section -->
         <div class="card">
             <h2>Balance Visual</h2>
-            <div class="chart-container">
-                <canvas id="budgetChart"></canvas>
-            </div>
+            <div class="chart-container"><canvas id="budgetChart"></canvas></div>
         </div>
 
         <div class="card">
             <h2>Historial</h2>
-            <div class="expenses-list" id="expensesList">
-                <div style="text-align: center; color: #555; margin-top: 20px;">Cargando datos...</div>
-            </div>
+            <div class="expenses-list" id="expensesList"></div>
         </div>
 
-        <div class="recommendation-box" id="recommendation">
-            Analizando finanzas...
-        </div>
+        <div class="recommendation-box" id="recommendation">Cargando...</div>
     </div>
 
-    <!-- MODAL PREVIEW -->
+    <!-- MODAL PREVIEW (DISEÑADO PARA PDF/IMPRESIÓN) -->
     <div class="modal-overlay" id="previewModal">
-        <div class="modal-content">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2>Reporte</h2>
-                <button onclick="closePreview()" style="padding:8px 12px; background:#f73859; color:white; border:none; border-radius:6px; font-weight:bold;">Cerrar</button>
+        <div class="modal-content" id="reportContent">
+            <!-- Cabecera del Reporte -->
+            <div class="report-header">
+                <h2 style="color:white; margin-bottom:5px;">REPORTE MENSUAL</h2>
+                <p style="color:#8f90a6; font-size:0.9rem;">Estado Financiero Detallado</p>
+                <p style="color:#8f90a6; font-size:0.8rem;" id="reportDate">Fecha: </p>
             </div>
+
+            <!-- Resumen de Cajas -->
+            <div class="report-summary">
+                <div class="report-box" style="border: 1px solid #00d26a;">
+                    <div style="font-size:0.7rem; color:#00d26a">INGRESOS</div>
+                    <div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div>
+                </div>
+                <div class="report-box" style="border: 1px solid #f73859;">
+                    <div style="font-size:0.7rem; color:#f73859">GASTOS</div>
+                    <div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div>
+                </div>
+                <div class="report-box" style="border: 1px solid #3d84ff;">
+                    <div style="font-size:0.7rem; color:#3d84ff">NETO</div>
+                    <div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Datos -->
             <div id="modalBody"></div>
+
+            <!-- Botones de Acción (No salen en el PDF) -->
+            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;" data-html2canvas-ignore="true">
+                <button onclick="downloadPDF()" style="flex:1; padding:12px; background:#f73859; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer;">📥 Descargar PDF</button>
+                <button onclick="window.print()" style="flex:1; padding:12px; background:#3d84ff; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer;">🖨️ Imprimir Color</button>
+                <button onclick="closePreview()" style="flex:1; padding:12px; background:#2c2c44; color:white; border:1px solid #555; border-radius:8px; cursor:pointer;">Cerrar</button>
+            </div>
         </div>
     </div>
 
@@ -256,6 +306,7 @@
         let expensesArr = [];
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
+        // Chart config
         const ctx = document.getElementById('budgetChart').getContext('2d');
         let myChart = new Chart(ctx, {
             type: 'bar',
@@ -268,8 +319,7 @@
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
                     y: { beginAtZero: true, grid: { color: '#2c2c44' }, ticks: { color: '#8f90a6' } },
@@ -278,11 +328,9 @@
             }
         });
 
-        window.onload = function() {
-            loadData();
-            checkReminders();
-        };
+        window.onload = function() { loadData(); };
 
+        // --- LOGICA BASICA ---
         function saveData() {
             localStorage.setItem('budgetIncome', totalIncome);
             localStorage.setItem('budgetExpenses', JSON.stringify(expensesArr));
@@ -294,138 +342,110 @@
             const storedExpenses = localStorage.getItem('budgetExpenses');
             if (storedIncome) totalIncome = parseFloat(storedIncome);
             if (storedExpenses) expensesArr = JSON.parse(storedExpenses);
-            updateUI();
-            renderList();
+            updateUI(); renderList();
         }
 
         function resetData() {
-            if(confirm("¿Borrar todos los datos?")) {
-                localStorage.clear();
-                totalIncome = 0;
-                expensesArr = [];
-                updateUI();
-                renderList();
-            }
+            if(confirm("¿Borrar todo?")) { localStorage.clear(); totalIncome = 0; expensesArr = []; updateUI(); renderList(); }
         }
 
         function setIncome() {
-            const input = document.getElementById('incomeInput');
-            const val = parseFloat(input.value);
-            if(isNaN(val) || val < 0) return alert("Ingreso inválido.");
-            totalIncome = val;
-            input.value = '';
-            saveData();
+            const val = parseFloat(document.getElementById('incomeInput').value);
+            if(isNaN(val) || val < 0) return alert("Dato inválido");
+            totalIncome = val; document.getElementById('incomeInput').value = ''; saveData();
         }
 
         function addExpense() {
-            const descInput = document.getElementById('expenseDesc');
-            const amountInput = document.getElementById('expenseAmount');
-            const dateInput = document.getElementById('expenseDate');
-            
-            const desc = descInput.value;
-            const amount = parseFloat(amountInput.value);
-            const dateVal = dateInput.value;
+            const desc = document.getElementById('expenseDesc').value;
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            const dateVal = document.getElementById('expenseDate').value;
 
-            if(desc === '' || isNaN(amount) || amount <= 0 || dateVal === '') {
-                return alert("Faltan datos del gasto.");
-            }
+            if(desc === '' || isNaN(amount) || amount <= 0 || dateVal === '') return alert("Completa los datos");
 
             expensesArr.push({ desc, amount, date: dateVal });
-            descInput.value = ''; amountInput.value = ''; dateInput.value = '';
+            document.getElementById('expenseDesc').value = '';
+            document.getElementById('expenseAmount').value = '';
+            document.getElementById('expenseDate').value = '';
             saveData(); renderList();
         }
 
         function renderList() {
-            const listContainer = document.getElementById('expensesList');
-            listContainer.innerHTML = '';
-            if(expensesArr.length === 0) {
-                listContainer.innerHTML = '<div style="text-align: center; color: #555; margin-top: 20px;">Sin gastos</div>';
-                return;
-            }
-
-            const today = new Date();
-            today.setHours(0,0,0,0);
-
+            const list = document.getElementById('expensesList'); list.innerHTML = '';
+            if(expensesArr.length === 0) { list.innerHTML = '<div style="text-align:center;color:#555;margin-top:20px">Sin registros</div>'; return; }
+            
             expensesArr.slice().reverse().forEach(item => {
-                const dateObj = new Date(item.date + 'T00:00:00');
-                const dateStr = dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                
-                let tagHTML = '';
-                const diffTime = dateObj - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays < 0) tagHTML = '<span class="tag tag-danger">Vencido</span>';
-                else if (diffDays === 0) tagHTML = '<span class="tag tag-danger">Hoy</span>';
-                else if (diffDays === 1) tagHTML = '<span class="tag tag-warning">Mañana</span>';
-
-                const div = document.createElement('div');
-                div.className = 'expense-item';
-                div.innerHTML = `
-                    <div class="expense-info">
-                        <span style="font-weight:600">${item.desc} ${tagHTML}</span>
-                        <span class="expense-date">📅 ${dateStr}</span>
-                    </div>
-                    <span style="color: var(--accent-red); font-weight:bold;">- ${moneyFormat.format(item.amount)}</span>
-                `;
-                listContainer.appendChild(div);
+                const d = new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'short'});
+                const div = document.createElement('div'); div.className = 'expense-item';
+                div.innerHTML = `<div class="expense-info"><span style="font-weight:600">${item.desc}</span><span class="expense-date">📅 ${d}</span></div><span style="color:#f73859;font-weight:bold">-${moneyFormat.format(item.amount)}</span>`;
+                list.appendChild(div);
             });
         }
 
         function updateUI() {
-            let totalExp = expensesArr.reduce((acc, curr) => acc + curr.amount, 0);
-            let balance = totalIncome - totalExp;
-
+            let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
+            let bal = totalIncome - totalExp;
+            
             document.getElementById('displayIncome').innerText = moneyFormat.format(totalIncome);
             document.getElementById('displayExpenses').innerText = moneyFormat.format(totalExp);
-            document.getElementById('displayBalance').innerText = moneyFormat.format(balance);
+            document.getElementById('displayBalance').innerText = moneyFormat.format(bal);
+            document.getElementById('displayBalance').className = bal < 0 ? 'stat-value val-red' : 'stat-value val-green';
+
+            myChart.data.datasets[0].data = [totalIncome, totalExp, bal]; myChart.update();
             
-            const balElem = document.getElementById('displayBalance');
-            balElem.className = balance < 0 ? 'stat-value val-red' : 'stat-value val-green';
-
-            myChart.data.datasets[0].data = [totalIncome, totalExp, balance];
-            myChart.update();
-            generateRecommendation(balance, totalIncome);
+            const rec = document.getElementById('recommendation');
+            if(totalIncome === 0) rec.innerText = "Esperando ingresos...";
+            else if(bal < 0) { rec.style.color='#f73859'; rec.innerText="⚠️ Déficit Financiero"; }
+            else if((bal/totalIncome) < 0.1) { rec.style.color='#ff9f43'; rec.innerText="✋ Presupuesto al Límite"; }
+            else { rec.style.color='#00d26a'; rec.innerText="🚀 Finanzas Saludables"; }
         }
 
-        function checkReminders() {
-            if (!("Notification" in window) || Notification.permission !== "granted") return;
-            const today = new Date(); today.setHours(0,0,0,0);
-            expensesArr.forEach(item => {
-                const dateObj = new Date(item.date + 'T00:00:00');
-                const diffDays = Math.ceil((dateObj - today) / (1000 * 60 * 60 * 24));
-                if (diffDays === 1 || diffDays === 0) {
-                    new Notification("Recordatorio de Pago", { body: `Vence: ${item.desc}` });
-                }
-            });
-        }
-
+        // --- LOGICA DE REPORTE Y PDF ---
         function openPreview() {
             const body = document.getElementById('modalBody');
             let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
-            let html = `
-                <div style="margin-bottom:15px; border-bottom:1px solid #ccc; padding-bottom:10px;">
-                    <p>Ingresos: <strong>${moneyFormat.format(totalIncome)}</strong></p>
-                    <p>Gastos: <strong>${moneyFormat.format(totalExp)}</strong></p>
-                    <p>Balance: <strong>${moneyFormat.format(totalIncome - totalExp)}</strong></p>
-                </div>
-                <table class="preview-table"><thead><tr><th>Gasto</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>`;
-            expensesArr.forEach(item => {
-                html += `<tr><td>${item.desc}</td><td>${item.date}</td><td>${moneyFormat.format(item.amount)}</td></tr>`;
+            let bal = totalIncome - totalExp;
+
+            // Llenar datos del reporte
+            document.getElementById('repInc').innerText = moneyFormat.format(totalIncome);
+            document.getElementById('repExp').innerText = moneyFormat.format(totalExp);
+            document.getElementById('repBal').innerText = moneyFormat.format(bal);
+            document.getElementById('reportDate').innerText = "Generado el: " + new Date().toLocaleDateString();
+
+            // Generar Tabla Estilizada
+            let html = `<table class="preview-table"><thead><tr><th>Concepto</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>`;
+            if(expensesArr.length === 0) html += `<tr><td colspan="3" style="text-align:center">Sin movimientos</td></tr>`;
+            
+            // Ordenar por fecha para el reporte
+            let sortedExp = [...expensesArr].sort((a,b) => new Date(a.date) - new Date(b.date));
+            
+            sortedExp.forEach(item => {
+                html += `<tr>
+                    <td>${item.desc}</td>
+                    <td>${item.date}</td>
+                    <td style="color:#f73859 font-weight:bold">${moneyFormat.format(item.amount)}</td>
+                </tr>`;
             });
             html += `</tbody></table>`;
+            
             body.innerHTML = html;
             document.getElementById('previewModal').style.display = 'flex';
         }
 
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
-        function generateRecommendation(balance, income) {
-            const box = document.getElementById('recommendation');
-            if (income === 0) return box.innerText = "Registra ingresos...";
-            const pct = (balance / income) * 100;
-            if (balance < 0) { box.style.color = '#f73859'; box.innerHTML = "⚠️ Estás en déficit."; }
-            else if (pct < 10) { box.style.color = '#ff9f43'; box.innerHTML = "✋ Cuidado, <10% libre."; }
-            else { box.style.color = '#00d26a'; box.innerHTML = "🚀 Finanzas sanas."; }
+        function downloadPDF() {
+            // Configuración del PDF
+            const element = document.getElementById('reportContent');
+            const opt = {
+                margin:       10,
+                filename:     'Reporte_Financiero.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, backgroundColor: '#1e1e2f' }, // Forzar fondo oscuro
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Ejecutar generación (Librería html2pdf)
+            html2pdf().set(opt).from(element).save();
         }
     </script>
 </body>
