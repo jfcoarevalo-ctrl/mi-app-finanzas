@@ -2,16 +2,19 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Configuración móvil -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gestor Financiero Pro</title>
+    <title>Gestor Financiero Cloud</title>
     
     <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Librería Gráficos -->
+    
+    <!-- LIBRERÍAS: Chart.js, PDF y FIREBASE -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Librería PDF (NUEVA) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Firebase SDK (Versión compatible 8.10.1) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
@@ -21,97 +24,26 @@
     <link rel="apple-touch-icon" href="icon.png">
 
     <style>
-        :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e2f;
-            --text-color: #e0e0e0;
-            --accent-green: #00d26a;
-            --accent-red: #f73859;
-            --accent-blue: #3d84ff;
-            --input-bg: #2c2c44;
-        }
-
+        :root { --bg-color: #121212; --card-bg: #1e1e2f; --text-color: #e0e0e0; --accent-green: #00d26a; --accent-red: #f73859; --accent-blue: #3d84ff; --input-bg: #2c2c44; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-            padding-bottom: 50px;
-        }
-
-        @media(min-width: 768px) {
-            .container { grid-template-columns: 1fr 1fr; }
-            .header, .stats, .recommendation-box, .toolbar { grid-column: span 2; }
-        }
-
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; min-height: 100vh; padding: 20px; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+        .container { width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr; gap: 20px; padding-bottom: 50px; }
+        @media(min-width: 768px) { .container { grid-template-columns: 1fr 1fr; } .header, .stats, .recommendation-box, .toolbar { grid-column: span 2; } }
         .header { text-align: center; margin-bottom: 10px; margin-top: 10px; }
-        .header h1 {
-            font-weight: 600;
-            background: linear-gradient(90deg, #3d84ff, #00d26a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 1.8rem;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-
+        .header h1 { font-weight: 600; background: linear-gradient(90deg, #3d84ff, #00d26a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.8rem; }
+        .card { background-color: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         h2 { font-size: 1.2rem; margin-bottom: 15px; color: #8f90a6; }
-
-        /* Toolbar Buttons */
         .toolbar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;}
-        .btn-tool {
-            flex: 1;
-            background-color: #2c2c44;
-            color: white;
-            padding: 12px;
-            border: 1px solid #3d84ff;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 500;
-            min-width: 100px;
-            display: flex; align-items: center; justify-content: center; gap: 5px;
-        }
-
-        /* Inputs */
+        .btn-tool { flex: 1; background-color: #2c2c44; color: white; padding: 12px; border: 1px solid #3d84ff; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; min-width: 100px; display:flex; align-items:center; justify-content:center; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #8f90a6; }
-        input {
-            width: 100%; padding: 14px; background-color: var(--input-bg);
-            border: 1px solid transparent; border-radius: 8px; color: white;
-            font-size: 1rem; margin-bottom: 10px;
-        }
+        input { width: 100%; padding: 14px; background-color: var(--input-bg); border: 1px solid transparent; border-radius: 8px; color: white; font-size: 1rem; margin-bottom: 10px; }
         input:focus { outline: none; border-color: var(--accent-blue); }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-
-        button.action-btn {
-            width: 100%; padding: 14px; border: none; border-radius: 8px;
-            font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.1s;
-        }
+        button.action-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.1s; }
         button.action-btn:active { transform: scale(0.96); }
         .btn-income { background-color: var(--accent-blue); color: white; }
         .btn-expense { background-color: var(--accent-red); color: white; margin-top: 5px;}
-
-        /* Stats */
         .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .stat-item { background: var(--card-bg); padding: 12px 5px; border-radius: 12px; text-align: center; border: 1px solid #2c2c44; }
         .stat-label { font-size: 0.75rem; color: #8f90a6; }
@@ -119,118 +51,73 @@
         .val-green { color: var(--accent-green); }
         .val-red { color: var(--accent-red); }
         .val-white { color: white; }
-
-        /* Chart & List */
         .chart-container { position: relative; height: 220px; width: 100%; }
         .expenses-list { max-height: 300px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .expense-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 0; border-bottom: 1px solid #2c2c44; font-size: 0.95rem;
-        }
+        .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #2c2c44; font-size: 0.95rem; }
         .expense-info { display: flex; flex-direction: column; text-align: left; }
         .expense-date { font-size: 0.8rem; color: #8f90a6; margin-top: 4px; }
-        
-        .tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
-        .tag-warning { background: rgba(255, 159, 67, 0.2); color: #ff9f43; }
-        .tag-danger { background: rgba(247, 56, 89, 0.2); color: #f73859; }
-        .tag-ok { background: rgba(0, 210, 106, 0.2); color: #00d26a; }
-
         .recommendation-box { padding: 15px; border-radius: 12px; text-align: center; font-weight: 600; background-color: #2c2c44; font-size: 0.95rem; line-height: 1.4;}
-
-        /* === MODAL Y REPORTE MEJORADO === */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999;
-        }
-        .modal-content {
-            background: var(--card-bg); color: var(--text-color); 
-            width: 95%; max-width: 600px; padding: 25px; 
-            border-radius: 12px; max-height: 90vh; overflow-y: auto;
-            border: 1px solid #3d84ff; /* Borde neón para el reporte */
-        }
-
-        /* Estilos de la Tabla del Reporte */
-        .report-header { 
-            text-align: center; margin-bottom: 20px; 
-            border-bottom: 2px solid #3d84ff; padding-bottom: 10px;
-        }
-        .report-summary {
-            display: grid; grid-template-columns: 1fr 1fr 1fr; 
-            gap: 10px; margin-bottom: 20px; text-align: center;
-        }
-        .report-box { background: #121212; padding: 10px; border-radius: 8px; }
         
-        .preview-table { 
-            width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white;
-        }
-        .preview-table th { 
-            background-color: #3d84ff; color: white; padding: 10px; text-align: left; 
-        }
-        .preview-table td { 
-            border-bottom: 1px solid #444; padding: 10px; 
-        }
-        .preview-table tr:nth-child(even) { background-color: #2c2c44; }
+        /* Sync Status Indicator */
+        .sync-status { position: fixed; bottom: 10px; right: 10px; width: 12px; height: 12px; background: gray; border-radius: 50%; border: 2px solid #121212; z-index: 100; }
+        .sync-active { background: #00d26a; box-shadow: 0 0 10px #00d26a; }
 
-        /* === CONFIGURACIÓN DE IMPRESIÓN / PDF === */
-        /* Esto asegura que al exportar, salga el fondo oscuro */
-        @media print {
-            body { 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important; 
-                background-color: #121212 !important;
-                color: white !important;
-            }
-            /* Ocultamos la interfaz de la app al imprimir directamente */
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
+        .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 600px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
+        .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #3d84ff; padding-bottom: 10px; }
+        .report-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; text-align: center; }
+        .report-box { background: #121212; padding: 10px; border-radius: 8px; }
+        .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white; }
+        .preview-table th { background-color: #3d84ff; color: white; padding: 10px; text-align: left; }
+        .preview-table td { border-bottom: 1px solid #444; padding: 10px; }
+        .preview-table tr:nth-child(even) { background-color: #2c2c44; }
+        @media print { 
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #121212 !important; color: white !important; }
             .container > .header, .toolbar, .stats, .card, .recommendation-box { display: none; }
-            
-            /* Mostramos solo el reporte si se imprime desde el modal */
-            .modal-overlay { 
-                display: block !important; position: static; background: #121212; 
-            }
-            .modal-content { 
-                width: 100%; border: none; box-shadow: none; overflow: visible; 
-            }
-            button { display: none !important; }
+            .modal-overlay { display: block !important; position: static; background: #121212; }
+            .modal-content { width: 100%; border: none; box-shadow: none; overflow: visible; }
+            button, .sync-status { display: none !important; }
         }
     </style>
 </head>
 <body>
 
+    <!-- Indicador de Sincronización -->
+    <div id="syncIndicator" class="sync-status" title="Estado de Sincronización"></div>
+
     <div class="container">
         <div class="header">
-            <h1>Gestor Financiero</h1>
-            <p>Panel de Control</p>
+            <h1>Gestor Cloud ☁️</h1>
+            <p>Sincronizado en tiempo real</p>
         </div>
 
-        <!-- Toolbar -->
         <div class="toolbar">
-            <button class="btn-tool" onclick="resetData()">🗑️ Borrar</button>
+            <button class="btn-tool" onclick="resetData()">🗑️ Borrar Todo</button>
             <button class="btn-tool" onclick="openPreview()">📄 Reporte</button>
         </div>
 
-        <!-- Stats Summary -->
         <div class="stats">
             <div class="stat-item">
                 <div class="stat-label">Ingresos</div>
-                <div class="stat-value val-green" id="displayIncome">$0.00</div>
+                <div class="stat-value val-green" id="displayIncome">...</div>
             </div>
             <div class="stat-item">
                 <div class="stat-label">Gastos</div>
-                <div class="stat-value val-red" id="displayExpenses">$0.00</div>
+                <div class="stat-value val-red" id="displayExpenses">...</div>
             </div>
             <div class="stat-item">
                 <div class="stat-label">Disponible</div>
-                <div class="stat-value val-white" id="displayBalance">$0.00</div>
+                <div class="stat-value val-white" id="displayBalance">...</div>
             </div>
         </div>
 
-        <!-- Inputs y Gráficos (Sin cambios en lógica) -->
         <div class="card">
             <h2>Registrar</h2>
             <div class="input-group">
                 <label>Ingreso Mensual</label>
                 <input type="number" id="incomeInput" placeholder="Ej: 25000" inputmode="numeric">
-                <button class="action-btn btn-income" onclick="setIncome()">Guardar Ingreso</button>
+                <button class="action-btn btn-income" onclick="setIncome()">Actualizar Ingreso</button>
             </div>
             <hr style="border-color: #2c2c44; margin: 20px 0;">
             <div class="input-group">
@@ -260,99 +147,115 @@
             <div class="expenses-list" id="expensesList"></div>
         </div>
 
-        <div class="recommendation-box" id="recommendation">Cargando...</div>
+        <div class="recommendation-box" id="recommendation">Conectando a la nube...</div>
     </div>
 
-    <!-- MODAL PREVIEW (DISEÑADO PARA PDF/IMPRESIÓN) -->
+    <!-- MODAL PDF -->
     <div class="modal-overlay" id="previewModal">
         <div class="modal-content" id="reportContent">
-            <!-- Cabecera del Reporte -->
             <div class="report-header">
-                <h2 style="color:white; margin-bottom:5px;">REPORTE MENSUAL</h2>
-                <p style="color:#8f90a6; font-size:0.9rem;">Estado Financiero Detallado</p>
+                <h2 style="color:white; margin-bottom:5px;">REPORTE CLOUD</h2>
+                <p style="color:#8f90a6; font-size:0.9rem;">Estado Sincronizado</p>
                 <p style="color:#8f90a6; font-size:0.8rem;" id="reportDate">Fecha: </p>
             </div>
-
-            <!-- Resumen de Cajas -->
             <div class="report-summary">
-                <div class="report-box" style="border: 1px solid #00d26a;">
-                    <div style="font-size:0.7rem; color:#00d26a">INGRESOS</div>
-                    <div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div>
-                </div>
-                <div class="report-box" style="border: 1px solid #f73859;">
-                    <div style="font-size:0.7rem; color:#f73859">GASTOS</div>
-                    <div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div>
-                </div>
-                <div class="report-box" style="border: 1px solid #3d84ff;">
-                    <div style="font-size:0.7rem; color:#3d84ff">NETO</div>
-                    <div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div>
-                </div>
+                <div class="report-box" style="border: 1px solid #00d26a;"><div style="font-size:0.7rem; color:#00d26a">INGRESOS</div><div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                <div class="report-box" style="border: 1px solid #f73859;"><div style="font-size:0.7rem; color:#f73859">GASTOS</div><div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                <div class="report-box" style="border: 1px solid #3d84ff;"><div style="font-size:0.7rem; color:#3d84ff">NETO</div><div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
             </div>
-
-            <!-- Tabla de Datos -->
             <div id="modalBody"></div>
-
-            <!-- Botones de Acción (No salen en el PDF) -->
             <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;" data-html2canvas-ignore="true">
                 <button onclick="downloadPDF()" style="flex:1; padding:12px; background:#f73859; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer;">📥 Descargar PDF</button>
-                <button onclick="window.print()" style="flex:1; padding:12px; background:#3d84ff; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer;">🖨️ Imprimir Color</button>
                 <button onclick="closePreview()" style="flex:1; padding:12px; background:#2c2c44; color:white; border:1px solid #555; border-radius:8px; cursor:pointer;">Cerrar</button>
             </div>
         </div>
     </div>
 
     <script>
+        // ==============================================
+        // ⚠️ AQUÍ ESTÁN TUS DATOS YA CONFIGURADOS ⚠️
+        // ==============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUW8mkor6lzFomj2ethMM9sHuMyRuvY_Q",
+            authDomain: "appfinanzas-cc8aa.firebaseapp.com",
+            projectId: "appfinanzas-cc8aa",
+            storageBucket: "appfinanzas-cc8aa.firebasestorage.app",
+            messagingSenderId: "621532467032",
+            appId: "1:621532467032:web:e7b1ab3f70b970b9839f2d"
+        };
+        // ==============================================
+
+        // Inicializar Firebase (Conexión)
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log("Conexión a Firebase iniciada correctamente.");
+        } catch (error) {
+            console.error("Error Firebase:", error);
+            alert("Error: Hubo un problema al conectar con tu base de datos. Revisa la consola.");
+        }
+
+        // Variables Locales (Espejo de la nube)
         let totalIncome = 0;
         let expensesArr = [];
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+        const syncIndicator = document.getElementById('syncIndicator');
 
-        // Chart config
+        // Chart
         const ctx = document.getElementById('budgetChart').getContext('2d');
         let myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Ingresos', 'Gastos', 'Libre'],
-                datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#00d26a', '#f73859', '#3d84ff'],
-                    borderRadius: 6
-                }]
+                datasets: [{ data: [0, 0, 0], backgroundColor: ['#00d26a', '#f73859', '#3d84ff'], borderRadius: 6 }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#2c2c44' }, ticks: { color: '#8f90a6' } },
-                    x: { grid: { display: false }, ticks: { color: '#e0e0e0' } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#2c2c44' }, ticks: { color: '#8f90a6' } }, x: { grid: { display: false }, ticks: { color: '#e0e0e0' } } } }
         });
 
-        window.onload = function() { loadData(); };
-
-        // --- LOGICA BASICA ---
-        function saveData() {
-            localStorage.setItem('budgetIncome', totalIncome);
-            localStorage.setItem('budgetExpenses', JSON.stringify(expensesArr));
-            updateUI();
+        // --- SINCRONIZACIÓN EN TIEMPO REAL ---
+        // Escucha cambios en la nube automaticamente
+        if(db) {
+            db.collection("finanzas").doc("mi_presupuesto").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    totalIncome = data.income || 0;
+                    expensesArr = data.expenses || [];
+                    updateUI();
+                    syncIndicator.classList.add('sync-active'); // Luz verde
+                } else {
+                    // Si es la primera vez, creamos el documento vacío
+                    saveToCloud(0, []);
+                }
+            }, (error) => {
+                console.log("Error de sincronización:", error);
+                document.getElementById('recommendation').innerText = "⚠️ Error de conexión. Verifica internet.";
+            });
         }
 
-        function loadData() {
-            const storedIncome = localStorage.getItem('budgetIncome');
-            const storedExpenses = localStorage.getItem('budgetExpenses');
-            if (storedIncome) totalIncome = parseFloat(storedIncome);
-            if (storedExpenses) expensesArr = JSON.parse(storedExpenses);
-            updateUI(); renderList();
+        // Función para enviar datos a la nube
+        function saveToCloud(income, expenses) {
+            if(!db) return;
+            syncIndicator.classList.remove('sync-active'); // Luz gris (guardando)
+            db.collection("finanzas").doc("mi_presupuesto").set({
+                income: income,
+                expenses: expenses,
+                lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                syncIndicator.classList.add('sync-active'); // Guardado
+            }).catch((error) => {
+                console.error("Error guardando:", error);
+                alert("Error al guardar en la nube. Revisa tu conexión.");
+            });
         }
 
-        function resetData() {
-            if(confirm("¿Borrar todo?")) { localStorage.clear(); totalIncome = 0; expensesArr = []; updateUI(); renderList(); }
-        }
+        // --- LOGICA DE LA APP ---
 
         function setIncome() {
             const val = parseFloat(document.getElementById('incomeInput').value);
             if(isNaN(val) || val < 0) return alert("Dato inválido");
-            totalIncome = val; document.getElementById('incomeInput').value = ''; saveData();
+            document.getElementById('incomeInput').value = '';
+            saveToCloud(val, expensesArr);
         }
 
         function addExpense() {
@@ -362,18 +265,30 @@
 
             if(desc === '' || isNaN(amount) || amount <= 0 || dateVal === '') return alert("Completa los datos");
 
-            expensesArr.push({ desc, amount, date: dateVal });
+            const newArr = [...expensesArr, { desc, amount, date: dateVal }];
+            
             document.getElementById('expenseDesc').value = '';
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseDate').value = '';
-            saveData(); renderList();
+            
+            saveToCloud(totalIncome, newArr);
         }
 
+        function resetData() {
+            if(confirm("¿Borrar TODO de la nube? Se borrará en todos tus dispositivos.")) {
+                saveToCloud(0, []);
+            }
+        }
+
+        // --- RENDERIZADO VISUAL ---
         function renderList() {
             const list = document.getElementById('expensesList'); list.innerHTML = '';
             if(expensesArr.length === 0) { list.innerHTML = '<div style="text-align:center;color:#555;margin-top:20px">Sin registros</div>'; return; }
             
-            expensesArr.slice().reverse().forEach(item => {
+            // Ordenar: Más nuevos primero en la lista visual
+            const visibleList = [...expensesArr].reverse();
+
+            visibleList.forEach(item => {
                 const d = new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'short'});
                 const div = document.createElement('div'); div.className = 'expense-item';
                 div.innerHTML = `<div class="expense-info"><span style="font-weight:600">${item.desc}</span><span class="expense-date">📅 ${d}</span></div><span style="color:#f73859;font-weight:bold">-${moneyFormat.format(item.amount)}</span>`;
@@ -391,60 +306,40 @@
             document.getElementById('displayBalance').className = bal < 0 ? 'stat-value val-red' : 'stat-value val-green';
 
             myChart.data.datasets[0].data = [totalIncome, totalExp, bal]; myChart.update();
+            renderList();
             
             const rec = document.getElementById('recommendation');
-            if(totalIncome === 0) rec.innerText = "Esperando ingresos...";
+            if(totalIncome === 0) rec.innerText = "Esperando datos de la nube...";
             else if(bal < 0) { rec.style.color='#f73859'; rec.innerText="⚠️ Déficit Financiero"; }
             else if((bal/totalIncome) < 0.1) { rec.style.color='#ff9f43'; rec.innerText="✋ Presupuesto al Límite"; }
-            else { rec.style.color='#00d26a'; rec.innerText="🚀 Finanzas Saludables"; }
+            else { rec.style.color='#00d26a'; rec.innerText="🚀 Finanzas Sincronizadas"; }
         }
 
-        // --- LOGICA DE REPORTE Y PDF ---
+        // --- REPORTE Y PDF ---
         function openPreview() {
             const body = document.getElementById('modalBody');
             let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
             let bal = totalIncome - totalExp;
-
-            // Llenar datos del reporte
             document.getElementById('repInc').innerText = moneyFormat.format(totalIncome);
             document.getElementById('repExp').innerText = moneyFormat.format(totalExp);
             document.getElementById('repBal').innerText = moneyFormat.format(bal);
-            document.getElementById('reportDate').innerText = "Generado el: " + new Date().toLocaleDateString();
+            document.getElementById('reportDate').innerText = "Generado: " + new Date().toLocaleDateString();
 
-            // Generar Tabla Estilizada
             let html = `<table class="preview-table"><thead><tr><th>Concepto</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>`;
             if(expensesArr.length === 0) html += `<tr><td colspan="3" style="text-align:center">Sin movimientos</td></tr>`;
             
-            // Ordenar por fecha para el reporte
             let sortedExp = [...expensesArr].sort((a,b) => new Date(a.date) - new Date(b.date));
-            
             sortedExp.forEach(item => {
-                html += `<tr>
-                    <td>${item.desc}</td>
-                    <td>${item.date}</td>
-                    <td style="color:#f73859 font-weight:bold">${moneyFormat.format(item.amount)}</td>
-                </tr>`;
+                html += `<tr><td>${item.desc}</td><td>${item.date}</td><td style="color:#f73859 font-weight:bold">${moneyFormat.format(item.amount)}</td></tr>`;
             });
             html += `</tbody></table>`;
-            
             body.innerHTML = html;
             document.getElementById('previewModal').style.display = 'flex';
         }
-
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
-
         function downloadPDF() {
-            // Configuración del PDF
             const element = document.getElementById('reportContent');
-            const opt = {
-                margin:       10,
-                filename:     'Reporte_Financiero.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, backgroundColor: '#1e1e2f' }, // Forzar fondo oscuro
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            // Ejecutar generación (Librería html2pdf)
+            const opt = { margin: 10, filename: 'Reporte_Cloud.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#1e1e2f' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
             html2pdf().set(opt).from(element).save();
         }
     </script>
