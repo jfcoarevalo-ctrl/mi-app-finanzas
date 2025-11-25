@@ -3,20 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gestor Financiero Cloud</title>
+    <title>Gestor Financiero Pro</title>
     
-    <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <!-- LIBRERÍAS: Chart.js, PDF y FIREBASE -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
-    <!-- Firebase SDK (Versión compatible 8.10.1) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -40,8 +36,11 @@
         input { width: 100%; padding: 14px; background-color: var(--input-bg); border: 1px solid transparent; border-radius: 8px; color: white; font-size: 1rem; margin-bottom: 10px; }
         input:focus { outline: none; border-color: var(--accent-blue); }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-        button.action-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.1s; }
+        
+        button.action-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.1s; opacity: 1; }
         button.action-btn:active { transform: scale(0.96); }
+        button.action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; background-color: #555 !important; color: #aaa !important; }
+        
         .btn-income { background-color: var(--accent-blue); color: white; }
         .btn-expense { background-color: var(--accent-red); color: white; margin-top: 5px;}
         .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -57,21 +56,39 @@
         .expense-info { display: flex; flex-direction: column; text-align: left; }
         .expense-date { font-size: 0.8rem; color: #8f90a6; margin-top: 4px; }
         .recommendation-box { padding: 15px; border-radius: 12px; text-align: center; font-weight: 600; background-color: #2c2c44; font-size: 0.95rem; line-height: 1.4;}
-        
-        /* Sync Status Indicator */
         .sync-status { position: fixed; bottom: 10px; right: 10px; width: 12px; height: 12px; background: gray; border-radius: 50%; border: 2px solid #121212; z-index: 100; }
         .sync-active { background: #00d26a; box-shadow: 0 0 10px #00d26a; }
-
+        
         /* Modal Styles */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
-        .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 600px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
-        .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #3d84ff; padding-bottom: 10px; }
+        .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 700px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
+        
+        /* === ESTILOS ESPECÍFICOS PARA EL REPORTE PDF === */
+        #pdfExportArea {
+            width: 100%;
+            margin: 0 auto;
+            text-align: center;
+            background-color: #1e1e2f; /* Fondo oscuro asegurado */
+            padding: 20px; /* Padding interno para que no quede pegado al borde */
+            border-radius: 8px;
+            box-sizing: border-box; /* Asegura que el padding no desborde */
+        }
+
+        .report-header { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            border-bottom: 2px solid #3d84ff; 
+            padding-bottom: 15px; /* Ajuste para separar del borde */
+            margin-top: 0; /* Elimina espacio superior */
+        }
+        
         .report-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; text-align: center; }
         .report-box { background: #121212; padding: 10px; border-radius: 8px; }
         .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white; }
         .preview-table th { background-color: #3d84ff; color: white; padding: 10px; text-align: left; }
-        .preview-table td { border-bottom: 1px solid #444; padding: 10px; }
+        .preview-table td { border-bottom: 1px solid #444; padding: 10px; text-align: left; }
         .preview-table tr:nth-child(even) { background-color: #2c2c44; }
+        
         @media print { 
             body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #121212 !important; color: white !important; }
             .container > .header, .toolbar, .stats, .card, .recommendation-box { display: none; }
@@ -83,7 +100,6 @@
 </head>
 <body>
 
-    <!-- Indicador de Sincronización -->
     <div id="syncIndicator" class="sync-status" title="Estado de Sincronización"></div>
 
     <div class="container">
@@ -100,15 +116,15 @@
         <div class="stats">
             <div class="stat-item">
                 <div class="stat-label">Ingresos</div>
-                <div class="stat-value val-green" id="displayIncome">...</div>
+                <div class="stat-value val-green" id="displayIncome">---</div>
             </div>
             <div class="stat-item">
                 <div class="stat-label">Gastos</div>
-                <div class="stat-value val-red" id="displayExpenses">...</div>
+                <div class="stat-value val-red" id="displayExpenses">---</div>
             </div>
             <div class="stat-item">
                 <div class="stat-label">Disponible</div>
-                <div class="stat-value val-white" id="displayBalance">...</div>
+                <div class="stat-value val-white" id="displayBalance">---</div>
             </div>
         </div>
 
@@ -117,7 +133,7 @@
             <div class="input-group">
                 <label>Ingreso Mensual</label>
                 <input type="number" id="incomeInput" placeholder="Ej: 25000" inputmode="numeric">
-                <button class="action-btn btn-income" onclick="setIncome()">Actualizar Ingreso</button>
+                <button class="action-btn btn-income" id="btnSaveIncome" onclick="setIncome()" disabled>Cargando datos...</button>
             </div>
             <hr style="border-color: #2c2c44; margin: 20px 0;">
             <div class="input-group">
@@ -133,7 +149,7 @@
                         <input type="date" id="expenseDate">
                     </div>
                 </div>
-                <button class="action-btn btn-expense" onclick="addExpense()">Agregar Gasto</button>
+                <button class="action-btn btn-expense" id="btnAddExpense" onclick="addExpense()" disabled>Cargando datos...</button>
             </div>
         </div>
 
@@ -141,40 +157,42 @@
             <h2>Balance Visual</h2>
             <div class="chart-container"><canvas id="budgetChart"></canvas></div>
         </div>
-
         <div class="card">
             <h2>Historial</h2>
             <div class="expenses-list" id="expensesList"></div>
         </div>
-
-        <div class="recommendation-box" id="recommendation">Conectando a la nube...</div>
+        <div class="recommendation-box" id="recommendation">Conectando...</div>
     </div>
 
     <!-- MODAL PDF -->
     <div class="modal-overlay" id="previewModal">
-        <div class="modal-content" id="reportContent">
-            <div class="report-header">
-                <h2 style="color:white; margin-bottom:5px;">REPORTE CLOUD</h2>
-                <p style="color:#8f90a6; font-size:0.9rem;">Estado Sincronizado</p>
-                <p style="color:#8f90a6; font-size:0.8rem;" id="reportDate">Fecha: </p>
+        <div class="modal-content">
+            
+            <!-- ÁREA EXPORTABLE ALINEADA -->
+            <div id="pdfExportArea">
+                <div class="report-header">
+                    <h2 style="color:white; margin-bottom:5px;">REPORTE CLOUD</h2>
+                    <p style="color:#8f90a6; font-size:0.9rem;">Estado Financiero</p>
+                    <p style="color:#8f90a6; font-size:0.8rem;" id="reportDate">Fecha: </p>
+                </div>
+                <div class="report-summary">
+                    <div class="report-box" style="border: 1px solid #00d26a;"><div style="font-size:0.7rem; color:#00d26a">INGRESOS</div><div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                    <div class="report-box" style="border: 1px solid #f73859;"><div style="font-size:0.7rem; color:#f73859">GASTOS</div><div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                    <div class="report-box" style="border: 1px solid #3d84ff;"><div style="font-size:0.7rem; color:#3d84ff">NETO</div><div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                </div>
+                <div id="modalBody"></div>
             </div>
-            <div class="report-summary">
-                <div class="report-box" style="border: 1px solid #00d26a;"><div style="font-size:0.7rem; color:#00d26a">INGRESOS</div><div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
-                <div class="report-box" style="border: 1px solid #f73859;"><div style="font-size:0.7rem; color:#f73859">GASTOS</div><div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
-                <div class="report-box" style="border: 1px solid #3d84ff;"><div style="font-size:0.7rem; color:#3d84ff">NETO</div><div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
-            </div>
-            <div id="modalBody"></div>
-            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;" data-html2canvas-ignore="true">
+            
+            <!-- BOTONES -->
+            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
                 <button onclick="downloadPDF()" style="flex:1; padding:12px; background:#f73859; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer;">📥 Descargar PDF</button>
                 <button onclick="closePreview()" style="flex:1; padding:12px; background:#2c2c44; color:white; border:1px solid #555; border-radius:8px; cursor:pointer;">Cerrar</button>
             </div>
+
         </div>
     </div>
 
     <script>
-        // ==============================================
-        // ⚠️ AQUÍ ESTÁN TUS DATOS YA CONFIGURADOS ⚠️
-        // ==============================================
         const firebaseConfig = {
             apiKey: "AIzaSyCUW8mkor6lzFomj2ethMM9sHuMyRuvY_Q",
             authDomain: "appfinanzas-cc8aa.firebaseapp.com",
@@ -183,112 +201,74 @@
             messagingSenderId: "621532467032",
             appId: "1:621532467032:web:e7b1ab3f70b970b9839f2d"
         };
-        // ==============================================
 
-        // Inicializar Firebase (Conexión)
         let db;
+        let dataLoaded = false;
+
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            console.log("Conexión a Firebase iniciada correctamente.");
         } catch (error) {
-            console.error("Error Firebase:", error);
-            alert("Error: Hubo un problema al conectar con tu base de datos. Revisa la consola.");
+            console.error(error);
+            alert("Error de conexión inicial.");
         }
 
-        // Variables Locales (Espejo de la nube)
         let totalIncome = 0;
         let expensesArr = [];
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
         const syncIndicator = document.getElementById('syncIndicator');
 
-        // Chart
+        const btnSaveIncome = document.getElementById('btnSaveIncome');
+        const btnAddExpense = document.getElementById('btnAddExpense');
+
         const ctx = document.getElementById('budgetChart').getContext('2d');
         let myChart = new Chart(ctx, {
             type: 'bar',
-            data: {
-                labels: ['Ingresos', 'Gastos', 'Libre'],
-                datasets: [{ data: [0, 0, 0], backgroundColor: ['#00d26a', '#f73859', '#3d84ff'], borderRadius: 6 }]
-            },
+            data: { labels: ['Ingresos', 'Gastos', 'Libre'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#00d26a', '#f73859', '#3d84ff'], borderRadius: 6 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#2c2c44' }, ticks: { color: '#8f90a6' } }, x: { grid: { display: false }, ticks: { color: '#e0e0e0' } } } }
         });
 
-        // --- SINCRONIZACIÓN EN TIEMPO REAL ---
-        // Escucha cambios en la nube automaticamente
         if(db) {
             db.collection("finanzas").doc("mi_presupuesto").onSnapshot((doc) => {
+                dataLoaded = true;
+                enableButtons();
                 if (doc.exists) {
                     const data = doc.data();
                     totalIncome = data.income || 0;
                     expensesArr = data.expenses || [];
                     updateUI();
-                    syncIndicator.classList.add('sync-active'); // Luz verde
+                    syncIndicator.classList.add('sync-active');
+                    document.getElementById('recommendation').innerText = "Conectado a la nube.";
+                    document.getElementById('recommendation').style.color = "#00d26a";
                 } else {
-                    // Si es la primera vez, creamos el documento vacío
-                    saveToCloud(0, []);
+                    totalIncome = 0; expensesArr = []; updateUI();
                 }
             }, (error) => {
-                console.log("Error de sincronización:", error);
-                document.getElementById('recommendation').innerText = "⚠️ Error de conexión. Verifica internet.";
+                document.getElementById('recommendation').innerText = "⚠️ Error de conexión.";
+                document.getElementById('recommendation').style.color = "#f73859";
+                disableButtons();
             });
         }
 
-        // Función para enviar datos a la nube
+        function enableButtons() { btnSaveIncome.disabled = false; btnSaveIncome.innerText = "Actualizar Ingreso"; btnAddExpense.disabled = false; btnAddExpense.innerText = "Agregar Gasto"; }
+        function disableButtons() { btnSaveIncome.disabled = true; btnSaveIncome.innerText = "Sin Conexión"; btnAddExpense.disabled = true; btnAddExpense.innerText = "Sin Conexión"; }
+
         function saveToCloud(income, expenses) {
-            if(!db) return;
-            syncIndicator.classList.remove('sync-active'); // Luz gris (guardando)
+            if(!db || !dataLoaded) return alert("Espera a que carguen los datos.");
+            syncIndicator.classList.remove('sync-active');
             db.collection("finanzas").doc("mi_presupuesto").set({
-                income: income,
-                expenses: expenses,
-                lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                syncIndicator.classList.add('sync-active'); // Guardado
-            }).catch((error) => {
-                console.error("Error guardando:", error);
-                alert("Error al guardar en la nube. Revisa tu conexión.");
-            });
+                income: income, expenses: expenses, lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => { syncIndicator.classList.add('sync-active'); }).catch((error) => { console.error(error); alert("Error al guardar."); });
         }
 
-        // --- LOGICA DE LA APP ---
+        function setIncome() { if(!dataLoaded) return; const val = parseFloat(document.getElementById('incomeInput').value); if(isNaN(val) || val < 0) return alert("Dato inválido"); document.getElementById('incomeInput').value = ''; saveToCloud(val, expensesArr); }
+        function addExpense() { if(!dataLoaded) return; const desc = document.getElementById('expenseDesc').value; const amount = parseFloat(document.getElementById('expenseAmount').value); const dateVal = document.getElementById('expenseDate').value; if(desc === '' || isNaN(amount) || amount <= 0 || dateVal === '') return alert("Completa los datos"); const newArr = [...expensesArr, { desc, amount, date: dateVal }]; document.getElementById('expenseDesc').value = ''; document.getElementById('expenseAmount').value = ''; document.getElementById('expenseDate').value = ''; saveToCloud(totalIncome, newArr); }
+        function resetData() { if(!dataLoaded) return alert("No hay conexión."); if(confirm("¿Borrar TODO de la nube?")) { saveToCloud(0, []); } }
 
-        function setIncome() {
-            const val = parseFloat(document.getElementById('incomeInput').value);
-            if(isNaN(val) || val < 0) return alert("Dato inválido");
-            document.getElementById('incomeInput').value = '';
-            saveToCloud(val, expensesArr);
-        }
-
-        function addExpense() {
-            const desc = document.getElementById('expenseDesc').value;
-            const amount = parseFloat(document.getElementById('expenseAmount').value);
-            const dateVal = document.getElementById('expenseDate').value;
-
-            if(desc === '' || isNaN(amount) || amount <= 0 || dateVal === '') return alert("Completa los datos");
-
-            const newArr = [...expensesArr, { desc, amount, date: dateVal }];
-            
-            document.getElementById('expenseDesc').value = '';
-            document.getElementById('expenseAmount').value = '';
-            document.getElementById('expenseDate').value = '';
-            
-            saveToCloud(totalIncome, newArr);
-        }
-
-        function resetData() {
-            if(confirm("¿Borrar TODO de la nube? Se borrará en todos tus dispositivos.")) {
-                saveToCloud(0, []);
-            }
-        }
-
-        // --- RENDERIZADO VISUAL ---
         function renderList() {
             const list = document.getElementById('expensesList'); list.innerHTML = '';
             if(expensesArr.length === 0) { list.innerHTML = '<div style="text-align:center;color:#555;margin-top:20px">Sin registros</div>'; return; }
-            
-            // Ordenar: Más nuevos primero en la lista visual
-            const visibleList = [...expensesArr].reverse();
-
-            visibleList.forEach(item => {
+            [...expensesArr].reverse().forEach(item => {
                 const d = new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'short'});
                 const div = document.createElement('div'); div.className = 'expense-item';
                 div.innerHTML = `<div class="expense-info"><span style="font-weight:600">${item.desc}</span><span class="expense-date">📅 ${d}</span></div><span style="color:#f73859;font-weight:bold">-${moneyFormat.format(item.amount)}</span>`;
@@ -297,49 +277,46 @@
         }
 
         function updateUI() {
-            let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
-            let bal = totalIncome - totalExp;
-            
-            document.getElementById('displayIncome').innerText = moneyFormat.format(totalIncome);
-            document.getElementById('displayExpenses').innerText = moneyFormat.format(totalExp);
-            document.getElementById('displayBalance').innerText = moneyFormat.format(bal);
-            document.getElementById('displayBalance').className = bal < 0 ? 'stat-value val-red' : 'stat-value val-green';
-
-            myChart.data.datasets[0].data = [totalIncome, totalExp, bal]; myChart.update();
-            renderList();
-            
-            const rec = document.getElementById('recommendation');
-            if(totalIncome === 0) rec.innerText = "Esperando datos de la nube...";
-            else if(bal < 0) { rec.style.color='#f73859'; rec.innerText="⚠️ Déficit Financiero"; }
-            else if((bal/totalIncome) < 0.1) { rec.style.color='#ff9f43'; rec.innerText="✋ Presupuesto al Límite"; }
-            else { rec.style.color='#00d26a'; rec.innerText="🚀 Finanzas Sincronizadas"; }
+            let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0); let bal = totalIncome - totalExp;
+            document.getElementById('displayIncome').innerText = moneyFormat.format(totalIncome); document.getElementById('displayExpenses').innerText = moneyFormat.format(totalExp); document.getElementById('displayBalance').innerText = moneyFormat.format(bal); document.getElementById('displayBalance').className = bal < 0 ? 'stat-value val-red' : 'stat-value val-green'; myChart.data.datasets[0].data = [totalIncome, totalExp, bal]; myChart.update(); renderList();
         }
 
-        // --- REPORTE Y PDF ---
         function openPreview() {
             const body = document.getElementById('modalBody');
-            let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
-            let bal = totalIncome - totalExp;
-            document.getElementById('repInc').innerText = moneyFormat.format(totalIncome);
-            document.getElementById('repExp').innerText = moneyFormat.format(totalExp);
-            document.getElementById('repBal').innerText = moneyFormat.format(bal);
-            document.getElementById('reportDate').innerText = "Generado: " + new Date().toLocaleDateString();
-
+            let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0); let bal = totalIncome - totalExp;
+            document.getElementById('repInc').innerText = moneyFormat.format(totalIncome); document.getElementById('repExp').innerText = moneyFormat.format(totalExp); document.getElementById('repBal').innerText = moneyFormat.format(bal); document.getElementById('reportDate').innerText = "Generado: " + new Date().toLocaleDateString();
             let html = `<table class="preview-table"><thead><tr><th>Concepto</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>`;
             if(expensesArr.length === 0) html += `<tr><td colspan="3" style="text-align:center">Sin movimientos</td></tr>`;
-            
             let sortedExp = [...expensesArr].sort((a,b) => new Date(a.date) - new Date(b.date));
-            sortedExp.forEach(item => {
-                html += `<tr><td>${item.desc}</td><td>${item.date}</td><td style="color:#f73859 font-weight:bold">${moneyFormat.format(item.amount)}</td></tr>`;
-            });
+            sortedExp.forEach(item => { html += `<tr><td>${item.desc}</td><td>${item.date}</td><td style="color:#f73859 font-weight:bold">${moneyFormat.format(item.amount)}</td></tr>`; });
             html += `</tbody></table>`;
             body.innerHTML = html;
             document.getElementById('previewModal').style.display = 'flex';
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
+
+        // --- FUNCIÓN PDF TAMAÑO CARTA Y CENTRADO ---
         function downloadPDF() {
-            const element = document.getElementById('reportContent');
-            const opt = { margin: 10, filename: 'Reporte_Cloud.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#1e1e2f' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+            const element = document.getElementById('pdfExportArea');
+            
+            const opt = {
+                margin:       0.5, // 0.5 pulgadas de margen (aprox 1.2cm) para que no quede pegado
+                filename:     'Reporte_Financiero.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
+                    scale: 2, 
+                    backgroundColor: '#1e1e2f',
+                    // Importante: Simulamos una ventana ancha para que la tabla se expanda
+                    // 8.5 pulgadas * 96dpi = 816px. Esto fuerza el centrado.
+                    windowWidth: 816 
+                }, 
+                jsPDF:        { 
+                    unit: 'in', // Unidades en Pulgadas
+                    format: 'letter', // Formato CARTA
+                    orientation: 'portrait' 
+                }
+            };
+
             html2pdf().set(opt).from(element).save();
         }
     </script>
