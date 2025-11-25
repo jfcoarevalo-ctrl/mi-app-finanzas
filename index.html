@@ -63,19 +63,25 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
         .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 700px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
         
-        /* === ESTILOS ESPECÍFICOS PARA EL REPORTE PDF === */
+        /* === ESTILOS REPORTE PDF (CORREGIDOS) === */
         #pdfExportArea {
+            /* Regresamos a Block para asegurar que el contenido se renderice */
+            display: block; 
             width: 100%;
             margin: 0 auto;
             text-align: center;
             background-color: #1e1e2f;
-            /* Padding SIMÉTRICO para evitar barras negras desiguales */
-            padding: 20px 20px 20px 20px; 
+            color: #ffffff !important; /* FORZAR BLANCO */
+            padding: 20px;
             border-radius: 8px;
-            box-sizing: border-box;
-            /* Asegura que el contenedor se ajuste al contenido y no crezca de más */
-            display: inline-block; 
-            min-width: 100%;
+        }
+
+        /* Forzamos que todo texto dentro sea blanco y visible */
+        #pdfExportArea h2, 
+        #pdfExportArea p, 
+        #pdfExportArea div, 
+        #pdfExportArea span {
+            color: #ffffff !important;
         }
 
         .report-header { 
@@ -87,16 +93,13 @@
         }
         
         .report-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; text-align: center; }
-        .report-box { background: #121212; padding: 10px; border-radius: 8px; }
+        .report-box { background: #121212; padding: 10px; border-radius: 8px; border: 1px solid #333; }
         
-        .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white; }
-        .preview-table th { background-color: #3d84ff; color: white; padding: 10px; text-align: left; }
-        .preview-table td { border-bottom: 1px solid #444; padding: 10px; text-align: left; }
+        .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white !important; }
+        .preview-table th { background-color: #3d84ff; color: white !important; padding: 10px; text-align: left; }
+        .preview-table td { border-bottom: 1px solid #444; padding: 10px; text-align: left; color: white !important; }
         .preview-table tr:nth-child(even) { background-color: #2c2c44; }
         
-        /* Eliminar márgenes de la tabla para que no empuje el fondo */
-        .preview-table { margin-bottom: 0; } 
-
         @media print { 
             body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #121212 !important; color: white !important; }
             .container > .header, .toolbar, .stats, .card, .recommendation-box { display: none; }
@@ -179,14 +182,14 @@
             <!-- ÁREA EXPORTABLE -->
             <div id="pdfExportArea">
                 <div class="report-header">
-                    <h2 style="color:white; margin-bottom:5px;">REPORTE CLOUD</h2>
-                    <p style="color:#8f90a6; font-size:0.9rem;">Estado Financiero</p>
-                    <p style="color:#8f90a6; font-size:0.8rem;" id="reportDate">Fecha: </p>
+                    <h2>REPORTE CLOUD</h2>
+                    <p style="font-size:0.9rem; color:#ccc !important;">Estado Financiero</p>
+                    <p style="font-size:0.8rem; color:#ccc !important;" id="reportDate">Fecha: </p>
                 </div>
                 <div class="report-summary">
-                    <div class="report-box" style="border: 1px solid #00d26a;"><div style="font-size:0.7rem; color:#00d26a">INGRESOS</div><div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
-                    <div class="report-box" style="border: 1px solid #f73859;"><div style="font-size:0.7rem; color:#f73859">GASTOS</div><div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
-                    <div class="report-box" style="border: 1px solid #3d84ff;"><div style="font-size:0.7rem; color:#3d84ff">NETO</div><div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                    <div class="report-box" style="border: 1px solid #00d26a;"><div style="font-size:0.7rem; color:#00d26a !important;">INGRESOS</div><div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                    <div class="report-box" style="border: 1px solid #f73859;"><div style="font-size:0.7rem; color:#f73859 !important;">GASTOS</div><div id="repExp" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
+                    <div class="report-box" style="border: 1px solid #3d84ff;"><div style="font-size:0.7rem; color:#3d84ff !important;">NETO</div><div id="repBal" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
                 </div>
                 <div id="modalBody"></div>
             </div>
@@ -296,49 +299,44 @@
             let html = `<table class="preview-table"><thead><tr><th>Concepto</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>`;
             if(expensesArr.length === 0) html += `<tr><td colspan="3" style="text-align:center">Sin movimientos</td></tr>`;
             let sortedExp = [...expensesArr].sort((a,b) => new Date(a.date) - new Date(b.date));
-            sortedExp.forEach(item => { html += `<tr><td>${item.desc}</td><td>${item.date}</td><td style="color:#f73859 font-weight:bold">${moneyFormat.format(item.amount)}</td></tr>`; });
+            sortedExp.forEach(item => { html += `<tr><td>${item.desc}</td><td>${item.date}</td><td style="color:#f73859 !important; font-weight:bold;">${moneyFormat.format(item.amount)}</td></tr>`; });
             html += `</tbody></table>`;
             body.innerHTML = html;
             document.getElementById('previewModal').style.display = 'flex';
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
-        // --- FUNCIÓN PDF CENTRADA ---
+        // --- FUNCIÓN PDF CORREGIDA (TEXTO VISIBLE + CENTRADO) ---
         function downloadPDF() {
             const element = document.getElementById('pdfExportArea');
             
-            // TRUCO DE CENTRADO:
-            // Guardamos el ancho original
+            // GUARDAMOS EL ESTILO ORIGINAL
             const originalWidth = element.style.width;
             
-            // Forzamos el ancho exacto para hoja Carta (Letter)
-            // Hoja Carta = 8.5 pulgadas.
-            // Margen izquierdo y derecho = aprox 0.5 pulgadas cada uno.
-            // Área útil = 7.5 pulgadas.
-            // 7.5 pulgadas * 96 DPI = 720px.
-            // Al fijar este ancho, el contenido se expande para ocuparlo todo.
+            // 1. FORZAMOS ANCHO FIJO (Para centrado en carta)
+            // 720px es aprox 7.5 pulgadas, ideal para margen de 0.5 a los lados
             element.style.width = '720px';
             element.style.margin = '0 auto';
 
             const opt = {
-                margin:       [0.3, 0.5], // Margen [Arriba/Abajo, Izquierda/Derecha] en pulgadas
+                margin:       [0.3, 0.5], 
                 filename:     'Reporte_Financiero.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
                     backgroundColor: '#1e1e2f',
-                    // Importante: Le decimos al generador que la ventana es ancha
-                    windowWidth: 800 
+                    // Importante: No usar windowWidth aquí si da problemas de render
+                    // Dejamos que el elemento fijo mande
                 }, 
                 jsPDF:        { 
                     unit: 'in', 
-                    format: 'letter', // Formato CARTA
+                    format: 'letter', 
                     orientation: 'portrait' 
                 }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
-                // Restauramos el estilo original para que no se vea raro en el celular
+                // RESTAURAMOS EL ESTILO PARA QUE NO SE VEA RARO EN EL MOVIL
                 element.style.width = originalWidth;
             });
         }
