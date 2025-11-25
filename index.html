@@ -68,27 +68,35 @@
             width: 100%;
             margin: 0 auto;
             text-align: center;
-            background-color: #1e1e2f; /* Fondo oscuro asegurado */
-            padding: 20px; /* Padding interno para que no quede pegado al borde */
+            background-color: #1e1e2f;
+            /* Padding SIMÉTRICO para evitar barras negras desiguales */
+            padding: 20px 20px 20px 20px; 
             border-radius: 8px;
-            box-sizing: border-box; /* Asegura que el padding no desborde */
+            box-sizing: border-box;
+            /* Asegura que el contenedor se ajuste al contenido y no crezca de más */
+            display: inline-block; 
+            min-width: 100%;
         }
 
         .report-header { 
             text-align: center; 
             margin-bottom: 20px; 
             border-bottom: 2px solid #3d84ff; 
-            padding-bottom: 15px; /* Ajuste para separar del borde */
-            margin-top: 0; /* Elimina espacio superior */
+            padding-bottom: 15px;
+            margin-top: 0;
         }
         
         .report-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; text-align: center; }
         .report-box { background: #121212; padding: 10px; border-radius: 8px; }
+        
         .preview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; color: white; }
         .preview-table th { background-color: #3d84ff; color: white; padding: 10px; text-align: left; }
         .preview-table td { border-bottom: 1px solid #444; padding: 10px; text-align: left; }
         .preview-table tr:nth-child(even) { background-color: #2c2c44; }
         
+        /* Eliminar márgenes de la tabla para que no empuje el fondo */
+        .preview-table { margin-bottom: 0; } 
+
         @media print { 
             body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #121212 !important; color: white !important; }
             .container > .header, .toolbar, .stats, .card, .recommendation-box { display: none; }
@@ -168,7 +176,7 @@
     <div class="modal-overlay" id="previewModal">
         <div class="modal-content">
             
-            <!-- ÁREA EXPORTABLE ALINEADA -->
+            <!-- ÁREA EXPORTABLE -->
             <div id="pdfExportArea">
                 <div class="report-header">
                     <h2 style="color:white; margin-bottom:5px;">REPORTE CLOUD</h2>
@@ -295,29 +303,44 @@
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
-        // --- FUNCIÓN PDF TAMAÑO CARTA Y CENTRADO ---
+        // --- FUNCIÓN PDF CENTRADA ---
         function downloadPDF() {
             const element = document.getElementById('pdfExportArea');
             
+            // TRUCO DE CENTRADO:
+            // Guardamos el ancho original
+            const originalWidth = element.style.width;
+            
+            // Forzamos el ancho exacto para hoja Carta (Letter)
+            // Hoja Carta = 8.5 pulgadas.
+            // Margen izquierdo y derecho = aprox 0.5 pulgadas cada uno.
+            // Área útil = 7.5 pulgadas.
+            // 7.5 pulgadas * 96 DPI = 720px.
+            // Al fijar este ancho, el contenido se expande para ocuparlo todo.
+            element.style.width = '720px';
+            element.style.margin = '0 auto';
+
             const opt = {
-                margin:       0.5, // 0.5 pulgadas de margen (aprox 1.2cm) para que no quede pegado
+                margin:       [0.3, 0.5], // Margen [Arriba/Abajo, Izquierda/Derecha] en pulgadas
                 filename:     'Reporte_Financiero.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
                     backgroundColor: '#1e1e2f',
-                    // Importante: Simulamos una ventana ancha para que la tabla se expanda
-                    // 8.5 pulgadas * 96dpi = 816px. Esto fuerza el centrado.
-                    windowWidth: 816 
+                    // Importante: Le decimos al generador que la ventana es ancha
+                    windowWidth: 800 
                 }, 
                 jsPDF:        { 
-                    unit: 'in', // Unidades en Pulgadas
+                    unit: 'in', 
                     format: 'letter', // Formato CARTA
                     orientation: 'portrait' 
                 }
             };
 
-            html2pdf().set(opt).from(element).save();
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Restauramos el estilo original para que no se vea raro en el celular
+                element.style.width = originalWidth;
+            });
         }
     </script>
 </body>
