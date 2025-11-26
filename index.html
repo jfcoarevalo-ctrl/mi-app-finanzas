@@ -55,7 +55,6 @@
         
         .chart-container { position: relative; height: 220px; width: 100%; }
         
-        /* Listas mejoradas */
         .list-container { max-height: 250px; overflow-y: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px;}
         .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2c44; font-size: 0.9rem; }
         .list-info { display: flex; flex-direction: column; text-align: left; }
@@ -70,7 +69,8 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
         .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 700px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
         
-        #pdfExportArea { display: block; width: 100%; margin: 0 auto; text-align: center; background-color: #1e1e2f; color: #ffffff !important; padding: 20px; border-radius: 8px; }
+        /* Estilos PDF Ajustados */
+        #pdfExportArea { display: block; width: 100%; margin: 0; text-align: center; background-color: #1e1e2f; color: #ffffff !important; padding: 20px; border-radius: 8px; }
         #pdfExportArea * { color: #ffffff !important; }
         .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #3d84ff; padding-bottom: 15px; }
         .report-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; text-align: center; }
@@ -105,13 +105,11 @@
             <div class="stat-item"><div class="stat-label">Neto</div><div class="stat-value val-white" id="displayBalance">---</div></div>
         </div>
 
-        <!-- SECCIÓN DE INGRESOS (NUEVA ESTRUCTURA) -->
+        <!-- SECCIÓN DE INGRESOS -->
         <div class="card">
             <h2 style="border-left-color: var(--accent-green);">Ingresos (Entradas)</h2>
-            <div class="list-container" id="incomesList"></div> <!-- Lista de ingresos -->
-            
+            <div class="list-container" id="incomesList"></div>
             <hr style="border-color: #2c2c44; margin: 10px 0;">
-            
             <div class="input-group">
                 <input type="text" id="incDesc" placeholder="Fuente (Ej: Proyecto Web)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -132,7 +130,6 @@
         <!-- SECCIÓN DE GASTOS -->
         <div class="card">
             <h2 style="border-left-color: var(--accent-red);">Gastos (Salidas)</h2>
-            
             <div class="input-group">
                 <input type="text" id="expDesc" placeholder="Concepto (Ej: Supermercado)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -150,7 +147,6 @@
                 <input type="date" id="expDate">
                 <button class="action-btn btn-expense" id="btnAddExpense" onclick="addExpense()" disabled>- Agregar Gasto</button>
             </div>
-            
             <div class="list-container" id="expensesList"></div>
         </div>
 
@@ -204,8 +200,7 @@
         let dataLoaded = false;
         try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch (e) { console.error(e); }
 
-        // NUEVAS ESTRUCTURAS DE DATOS
-        let incomesArr = []; // Array para múltiples ingresos
+        let incomesArr = [];
         let expensesArr = [];
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
         const syncIndicator = document.getElementById('syncIndicator');
@@ -226,20 +221,15 @@
                 enableButtons();
                 if (doc.exists) {
                     const data = doc.data();
-                    
-                    // --- MIGRACIÓN AUTOMÁTICA DE V2 A V3 ---
-                    // Si existe 'income' (numero) pero no 'incomes' (array), convertimos.
                     if (data.income !== undefined && !data.incomes) {
-                        console.log("Migrando datos...");
                         incomesArr = [{ desc: "Saldo Anterior", amount: data.income, date: new Date().toISOString().split('T')[0], category: "Otro" }];
                     } else {
                         incomesArr = data.incomes || [];
                     }
-                    
                     expensesArr = data.expenses || [];
                     updateUI();
                     syncIndicator.classList.add('sync-active');
-                    document.getElementById('recommendation').innerText = "V3 Conectado. Datos listos.";
+                    document.getElementById('recommendation').innerText = "V3 Conectado.";
                     document.getElementById('recommendation').style.color = "#00d26a";
                 } else {
                     incomesArr = []; expensesArr = []; updateUI();
@@ -256,8 +246,6 @@
         function saveToCloud() {
             if(!db || !dataLoaded) return alert("Espera carga...");
             syncIndicator.classList.remove('sync-active');
-            
-            // Guardamos el objeto completo con la nueva estructura
             db.collection("finanzas").doc("mi_presupuesto").set({
                 incomes: incomesArr,
                 expenses: expensesArr,
@@ -265,7 +253,6 @@
             }).then(() => { syncIndicator.classList.add('sync-active'); }).catch((e) => alert("Error guardar"));
         }
 
-        // --- NUEVA FUNCIÓN AGREGAR INGRESO ---
         function addIncome() {
             if(!dataLoaded) return;
             const desc = document.getElementById('incDesc').value;
@@ -276,16 +263,12 @@
             if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos de ingreso");
 
             incomesArr.push({ desc, amount, category: cat, date });
-            
-            // Limpiar
             document.getElementById('incDesc').value = '';
             document.getElementById('incAmount').value = '';
             document.getElementById('incDate').value = '';
-            
             saveToCloud();
         }
 
-        // --- FUNCIÓN AGREGAR GASTO (ACTUALIZADA CON CATEGORÍA) ---
         function addExpense() {
             if(!dataLoaded) return;
             const desc = document.getElementById('expDesc').value;
@@ -296,11 +279,9 @@
             if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos de gasto");
 
             expensesArr.push({ desc, amount, category: cat, date });
-            
             document.getElementById('expDesc').value = '';
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expDate').value = '';
-            
             saveToCloud();
         }
 
@@ -308,9 +289,7 @@
             if(confirm("¿Borrar TODO (Ingresos y Gastos)?")) { incomesArr=[]; expensesArr=[]; saveToCloud(); }
         }
 
-        // --- RENDERIZADO VISUAL UNIFICADO ---
         function renderLists() {
-            // Render Ingresos
             const incList = document.getElementById('incomesList'); incList.innerHTML = '';
             const sortedInc = [...incomesArr].reverse();
             if(sortedInc.length===0) incList.innerHTML = '<div style="text-align:center;color:#555">Sin ingresos</div>';
@@ -328,7 +307,6 @@
                 });
             }
 
-            // Render Gastos
             const expList = document.getElementById('expensesList'); expList.innerHTML = '';
             const sortedExp = [...expensesArr].reverse();
             if(sortedExp.length===0) expList.innerHTML = '<div style="text-align:center;color:#555">Sin gastos</div>';
@@ -348,7 +326,6 @@
         }
 
         function updateUI() {
-            // Calcular totales sumando Arrays
             let totalIncome = incomesArr.reduce((a,b)=>a+b.amount,0);
             let totalExp = expensesArr.reduce((a,b)=>a+b.amount,0);
             let bal = totalIncome - totalExp;
@@ -370,7 +347,6 @@
             document.getElementById('repBal').innerText = moneyFormat.format(totalIncome - totalExp);
             document.getElementById('reportDate').innerText = "Fecha: " + new Date().toLocaleDateString();
 
-            // Tabla Ingresos
             let htmlInc = `<table class="preview-table"><thead><tr><th>Fuente</th><th>Cat</th><th>Monto</th></tr></thead><tbody>`;
             [...incomesArr].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(i => {
                 htmlInc += `<tr><td>${i.desc}</td><td>${i.category||'-'}</td><td style="color:#00d26a !important">${moneyFormat.format(i.amount)}</td></tr>`;
@@ -378,7 +354,6 @@
             htmlInc += `</tbody></table>`;
             document.getElementById('incomesTableBody').innerHTML = htmlInc;
 
-            // Tabla Gastos
             let htmlExp = `<table class="preview-table"><thead><tr><th>Concepto</th><th>Cat</th><th>Monto</th></tr></thead><tbody>`;
             [...expensesArr].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(i => {
                 htmlExp += `<tr><td>${i.desc}</td><td>${i.category||'-'}</td><td style="color:#f73859 !important">${moneyFormat.format(i.amount)}</td></tr>`;
@@ -390,12 +365,40 @@
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
+        // --- FUNCIÓN PDF CORREGIDA PARA EVITAR CORTES ---
         function downloadPDF() {
             const element = document.getElementById('pdfExportArea');
+            
+            // Guardamos estilos originales
             const originalWidth = element.style.width;
-            element.style.width = '720px'; element.style.margin = '0 auto';
-            const opt = { margin: [0.3, 0.5], filename: 'Reporte_V3.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#1e1e2f', windowWidth: 800 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
-            html2pdf().set(opt).from(element).save().then(() => { element.style.width = originalWidth; });
+            const originalMargin = element.style.margin;
+            const originalPadding = element.style.padding;
+
+            // CONFIGURACIÓN EXACTA PARA CARTA
+            element.style.width = '700px';  // Un poco menos de 8.5in para asegurar márgenes
+            element.style.margin = '0';     // Quitamos el auto-centrado para la foto
+            element.style.padding = '20px'; // Padding limpio
+
+            const opt = {
+                margin:       0.5,
+                filename:     'Reporte_V3.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
+                    scale: 2, 
+                    backgroundColor: '#1e1e2f',
+                    windowWidth: 800,
+                    x: 0, 
+                    scrollY: 0
+                }, 
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Restauramos
+                element.style.width = originalWidth;
+                element.style.margin = originalMargin;
+                element.style.padding = originalPadding;
+            });
         }
     </script>
 </body>
