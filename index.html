@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gestor Financiero V3</title>
+    <title>Gestor Financiero V3.2</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -24,9 +24,22 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; min-height: 100vh; padding: 20px; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
         .container { width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr; gap: 20px; padding-bottom: 50px; }
-        @media(min-width: 768px) { .container { grid-template-columns: 1fr 1fr; } .header, .stats, .recommendation-box, .toolbar { grid-column: span 2; } }
-        .header { text-align: center; margin-bottom: 10px; margin-top: 10px; }
+        @media(min-width: 768px) { .container { grid-template-columns: 1fr 1fr; } .header, .stats, .recommendation-box, .toolbar, .month-selector-container { grid-column: span 2; } }
+        
+        .header { text-align: center; margin-bottom: 5px; margin-top: 5px; }
         .header h1 { font-weight: 600; background: linear-gradient(90deg, #3d84ff, #00d26a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.8rem; }
+        
+        /* NUEVO: SELECTOR DE MES */
+        .month-selector-container { text-align: center; margin-bottom: 15px; }
+        .month-input { 
+            background: #2c2c44; border: 1px solid #3d84ff; color: white; 
+            padding: 10px 20px; border-radius: 20px; font-size: 1rem; 
+            font-weight: bold; text-align: center; cursor: pointer;
+            outline: none;
+        }
+        /* Icono calendario blanco */
+        input[type="month"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
         .card { background-color: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         h2 { font-size: 1.1rem; margin-bottom: 15px; color: #8f90a6; border-left: 3px solid var(--accent-blue); padding-left: 10px; }
         
@@ -71,14 +84,8 @@
         
         /* ESTILOS REPORTE PDF - Limpieza visual */
         #pdfExportArea { 
-            display: block; 
-            width: 100%; 
-            margin: 0 auto; 
-            text-align: center; 
-            background-color: #1e1e2f; 
-            color: #ffffff !important; 
-            padding: 20px; 
-            border-radius: 8px;
+            display: block; width: 100%; margin: 0 auto; text-align: center; 
+            background-color: #1e1e2f; color: #ffffff !important; padding: 20px; border-radius: 8px;
         }
         #pdfExportArea * { color: #ffffff !important; }
         
@@ -101,11 +108,16 @@
     <div class="container">
         <div class="header">
             <h1>Gestor V3 💎</h1>
-            <p>Categorías y Múltiples Ingresos</p>
+            <p>Control Histórico y Mensual</p>
+        </div>
+
+        <!-- NUEVO: SELECTOR DE MES -->
+        <div class="month-selector-container">
+            <input type="month" id="monthSelector" class="month-input" onchange="changeMonth()">
         </div>
 
         <div class="toolbar">
-            <button class="btn-tool" onclick="resetData()">🗑️ Reset</button>
+            <button class="btn-tool" onclick="resetData()">🗑️ Limpiar Mes</button>
             <button class="btn-tool" onclick="openPreview()">📄 Reporte</button>
         </div>
 
@@ -165,7 +177,7 @@
             <div class="chart-container"><canvas id="budgetChart"></canvas></div>
         </div>
         
-        <div class="recommendation-box" id="recommendation">Conectando...</div>
+        <div class="recommendation-box" id="recommendation">Cargando mes...</div>
     </div>
 
     <!-- MODAL PDF -->
@@ -173,8 +185,9 @@
         <div class="modal-content">
             <div id="pdfExportArea">
                 <div class="report-header">
-                    <h2>REPORTE FINANCIERO V3</h2>
-                    <p style="font-size:0.8rem; color:#ccc !important;" id="reportDate">Fecha: </p>
+                    <h2>REPORTE FINANCIERO</h2>
+                    <p style="font-size:0.9rem; color:#ccc !important;" id="reportMonthTitle">Mes: </p>
+                    <p style="font-size:0.8rem; color:#ccc !important;" id="reportDate">Generado: </p>
                 </div>
                 <div class="report-summary">
                     <div class="report-box" style="border: 1px solid #00d26a;"><div style="font-size:0.7rem; color:#00d26a !important;">INGRESOS</div><div id="repInc" style="font-weight:bold; font-size:0.9rem;">$0</div></div>
@@ -207,11 +220,13 @@
         };
 
         let db;
-        let dataLoaded = false;
         try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch (e) { console.error(e); }
 
         let incomesArr = [];
         let expensesArr = [];
+        let currentMonthDoc = ""; // ID del documento actual (ej: "2025-11")
+        let unsubscribe = null;   // Para detener la escucha al cambiar de mes
+
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
         const syncIndicator = document.getElementById('syncIndicator');
 
@@ -225,38 +240,85 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#2c2c44' }, ticks: { color: '#8f90a6' } }, x: { grid: { display: false }, ticks: { color: '#e0e0e0' } } } }
         });
 
-        if(db) {
-            db.collection("finanzas").doc("mi_presupuesto").onSnapshot((doc) => {
-                dataLoaded = true;
+        // --- INICIALIZACIÓN ---
+        window.onload = function() {
+            // Establecer fecha actual en el selector
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const currentIso = `${year}-${month}`;
+            
+            const selector = document.getElementById('monthSelector');
+            selector.value = currentIso;
+            
+            // Cargar datos de este mes
+            loadMonthData(currentIso);
+        };
+
+        // --- CAMBIO DE MES ---
+        function changeMonth() {
+            const selector = document.getElementById('monthSelector');
+            const newMonth = selector.value;
+            if(newMonth) {
+                loadMonthData(newMonth);
+            }
+        }
+
+        // --- CARGA DE DATOS (MÁQUINA DEL TIEMPO) ---
+        function loadMonthData(monthIso) {
+            currentMonthDoc = monthIso; // Ej: "2025-11"
+            
+            // 1. Desconectar del mes anterior (si existe)
+            if (unsubscribe) {
+                unsubscribe();
+            }
+
+            // 2. Limpiar UI visualmente para efecto de carga
+            incomesArr = [];
+            expensesArr = [];
+            updateUI();
+            document.getElementById('recommendation').innerText = `Cargando ${monthIso}...`;
+            disableButtons();
+
+            if (!db) return;
+
+            // 3. Conectar al nuevo mes
+            // NOTA: Ahora usamos el ID del mes como nombre del documento en Firebase
+            unsubscribe = db.collection("finanzas").doc(currentMonthDoc).onSnapshot((doc) => {
                 enableButtons();
                 if (doc.exists) {
                     const data = doc.data();
-                    if (data.income !== undefined && !data.incomes) {
-                        incomesArr = [{ desc: "Saldo Anterior", amount: data.income, date: new Date().toISOString().split('T')[0], category: "Otro" }];
-                    } else {
-                        incomesArr = data.incomes || [];
-                    }
+                    incomesArr = data.incomes || [];
                     expensesArr = data.expenses || [];
+                    
                     updateUI();
                     syncIndicator.classList.add('sync-active');
-                    document.getElementById('recommendation').innerText = "V3 Conectado.";
+                    document.getElementById('recommendation').innerText = "Sincronizado";
                     document.getElementById('recommendation').style.color = "#00d26a";
                 } else {
-                    incomesArr = []; expensesArr = []; updateUI();
+                    // Mes nuevo o vacío
+                    incomesArr = [];
+                    expensesArr = [];
+                    updateUI();
+                    document.getElementById('recommendation').innerText = "Mes nuevo. Empieza a registrar.";
+                    document.getElementById('recommendation').style.color = "#3d84ff";
                 }
             }, (error) => {
-                document.getElementById('recommendation').innerText = "⚠️ Error conexión.";
+                console.error(error);
+                document.getElementById('recommendation').innerText = "⚠️ Error de conexión.";
                 disableButtons();
             });
         }
 
-        function enableButtons() { btnAddIncome.disabled = false; btnAddIncome.innerText = "+ Agregar Ingreso"; btnAddExpense.disabled = false; btnAddExpense.innerText = "- Agregar Gasto"; }
+        function enableButtons() { btnAddIncome.disabled = false; btnAddExpense.disabled = false; }
         function disableButtons() { btnAddIncome.disabled = true; btnAddExpense.disabled = true; }
 
         function saveToCloud() {
-            if(!db || !dataLoaded) return alert("Espera carga...");
+            if(!db || !currentMonthDoc) return alert("Error de referencia.");
             syncIndicator.classList.remove('sync-active');
-            db.collection("finanzas").doc("mi_presupuesto").set({
+            
+            // Guardamos en el documento del MES SELECCIONADO
+            db.collection("finanzas").doc(currentMonthDoc).set({
                 incomes: incomesArr,
                 expenses: expensesArr,
                 lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
@@ -264,73 +326,49 @@
         }
 
         function addIncome() {
-            if(!dataLoaded) return;
             const desc = document.getElementById('incDesc').value;
             const amount = parseFloat(document.getElementById('incAmount').value);
             const cat = document.getElementById('incCat').value;
             const date = document.getElementById('incDate').value;
-
-            if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos de ingreso");
-
+            if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos");
             incomesArr.push({ desc, amount, category: cat, date });
-            document.getElementById('incDesc').value = '';
-            document.getElementById('incAmount').value = '';
-            document.getElementById('incDate').value = '';
+            document.getElementById('incDesc').value = ''; document.getElementById('incAmount').value = ''; document.getElementById('incDate').value = '';
             saveToCloud();
         }
 
         function addExpense() {
-            if(!dataLoaded) return;
             const desc = document.getElementById('expDesc').value;
             const amount = parseFloat(document.getElementById('expenseAmount').value);
             const cat = document.getElementById('expCat').value;
             const date = document.getElementById('expDate').value;
-
-            if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos de gasto");
-
+            if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos");
             expensesArr.push({ desc, amount, category: cat, date });
-            document.getElementById('expDesc').value = '';
-            document.getElementById('expenseAmount').value = '';
-            document.getElementById('expDate').value = '';
+            document.getElementById('expDesc').value = ''; document.getElementById('expenseAmount').value = ''; document.getElementById('expDate').value = '';
             saveToCloud();
         }
 
         function resetData() {
-            if(confirm("¿Borrar TODO (Ingresos y Gastos)?")) { incomesArr=[]; expensesArr=[]; saveToCloud(); }
+            if(confirm(`¿Borrar todo lo de ${currentMonthDoc}? (No afecta otros meses)`)) { incomesArr=[]; expensesArr=[]; saveToCloud(); }
         }
 
         function renderLists() {
             const incList = document.getElementById('incomesList'); incList.innerHTML = '';
             const sortedInc = [...incomesArr].reverse();
-            if(sortedInc.length===0) incList.innerHTML = '<div style="text-align:center;color:#555">Sin ingresos</div>';
+            if(sortedInc.length===0) incList.innerHTML = '<div style="text-align:center;color:#555">Sin ingresos este mes</div>';
             else {
                 sortedInc.forEach(item => {
                     const d = new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'short'});
-                    incList.innerHTML += `
-                        <div class="list-item">
-                            <div class="list-info">
-                                <span style="font-weight:600">${item.desc} <span class="tag" style="color:#00d26a">${item.category || 'Gral'}</span></span>
-                                <span class="list-meta">📅 ${d}</span>
-                            </div>
-                            <span style="color:var(--accent-green);font-weight:bold">+${moneyFormat.format(item.amount)}</span>
-                        </div>`;
+                    incList.innerHTML += `<div class="list-item"><div class="list-info"><span style="font-weight:600">${item.desc} <span class="tag" style="color:#00d26a">${item.category || 'Gral'}</span></span><span class="list-meta">📅 ${d}</span></div><span style="color:var(--accent-green);font-weight:bold">+${moneyFormat.format(item.amount)}</span></div>`;
                 });
             }
 
             const expList = document.getElementById('expensesList'); expList.innerHTML = '';
             const sortedExp = [...expensesArr].reverse();
-            if(sortedExp.length===0) expList.innerHTML = '<div style="text-align:center;color:#555">Sin gastos</div>';
+            if(sortedExp.length===0) expList.innerHTML = '<div style="text-align:center;color:#555">Sin gastos este mes</div>';
             else {
                 sortedExp.forEach(item => {
                     const d = new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'short'});
-                    expList.innerHTML += `
-                        <div class="list-item">
-                            <div class="list-info">
-                                <span style="font-weight:600">${item.desc} <span class="tag" style="color:#f73859">${item.category || 'Gral'}</span></span>
-                                <span class="list-meta">📅 ${d}</span>
-                            </div>
-                            <span style="color:var(--accent-red);font-weight:bold">-${moneyFormat.format(item.amount)}</span>
-                        </div>`;
+                    expList.innerHTML += `<div class="list-item"><div class="list-info"><span style="font-weight:600">${item.desc} <span class="tag" style="color:#f73859">${item.category || 'Gral'}</span></span><span class="list-meta">📅 ${d}</span></div><span style="color:var(--accent-red);font-weight:bold">-${moneyFormat.format(item.amount)}</span></div>`;
                 });
             }
         }
@@ -355,7 +393,8 @@
             document.getElementById('repInc').innerText = moneyFormat.format(totalIncome);
             document.getElementById('repExp').innerText = moneyFormat.format(totalExp);
             document.getElementById('repBal').innerText = moneyFormat.format(totalIncome - totalExp);
-            document.getElementById('reportDate').innerText = "Fecha: " + new Date().toLocaleDateString();
+            document.getElementById('reportMonthTitle').innerText = "Periodo: " + currentMonthDoc;
+            document.getElementById('reportDate').innerText = "Generado: " + new Date().toLocaleDateString();
 
             let htmlInc = `<table class="preview-table"><thead><tr><th>Fuente</th><th>Cat</th><th>Monto</th></tr></thead><tbody>`;
             [...incomesArr].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(i => {
@@ -375,47 +414,15 @@
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
-        // --- FUNCIÓN CLONADO (SOLUCIÓN DEFINITIVA DE CORTE) ---
         function downloadPDF() {
-            // 1. Clonar el contenido que queremos imprimir
             const originalElement = document.getElementById('pdfExportArea');
             const clonedElement = originalElement.cloneNode(true);
-
-            // 2. Crear un contenedor temporal invisible y pegado a la izquierda (0,0)
             const container = document.createElement('div');
-            container.style.position = 'absolute';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.width = '750px'; // Ancho fijo perfecto para Carta
-            container.style.zIndex = '-9999'; // Detrás de todo
-            container.style.background = '#1e1e2f'; // Asegurar fondo
-            
-            // Importante: Eliminar márgenes del clon para que no se mueva
-            clonedElement.style.margin = '0';
-            clonedElement.style.width = '100%';
-            
-            container.appendChild(clonedElement);
-            document.body.appendChild(container);
-
-            // 3. Configurar PDF
-            const opt = {
-                margin:       0.5,
-                filename:     'Reporte_V3.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2, 
-                    backgroundColor: '#1e1e2f',
-                    // Al usar el clon en (0,0), ya no necesitamos windowWidth ni trucos
-                    scrollY: 0,
-                    scrollX: 0
-                }, 
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-
-            // 4. Generar y limpiar
-            html2pdf().set(opt).from(clonedElement).save().then(() => {
-                document.body.removeChild(container);
-            });
+            container.style.position = 'absolute'; container.style.top = '0'; container.style.left = '0'; container.style.width = '750px'; container.style.zIndex = '-9999'; container.style.background = '#1e1e2f';
+            clonedElement.style.margin = '0'; clonedElement.style.width = '100%';
+            container.appendChild(clonedElement); document.body.appendChild(container);
+            const opt = { margin: 0.5, filename: `Reporte_${currentMonthDoc}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#1e1e2f', scrollY: 0, scrollX: 0 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+            html2pdf().set(opt).from(clonedElement).save().then(() => { document.body.removeChild(container); });
         }
     </script>
 </body>
