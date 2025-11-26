@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gestor Financiero V3.2</title>
+    <title>Gestor Financiero V3.3</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,15 +29,15 @@
         .header { text-align: center; margin-bottom: 5px; margin-top: 5px; }
         .header h1 { font-weight: 600; background: linear-gradient(90deg, #3d84ff, #00d26a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.8rem; }
         
-        /* NUEVO: SELECTOR DE MES */
+        /* SELECTOR DE MES */
         .month-selector-container { text-align: center; margin-bottom: 15px; }
         .month-input { 
             background: #2c2c44; border: 1px solid #3d84ff; color: white; 
             padding: 10px 20px; border-radius: 20px; font-size: 1rem; 
             font-weight: bold; text-align: center; cursor: pointer;
             outline: none;
+            /* Permite seleccionar cualquier año */
         }
-        /* Icono calendario blanco */
         input[type="month"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
         .card { background-color: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
@@ -82,7 +82,6 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
         .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 700px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
         
-        /* ESTILOS REPORTE PDF - Limpieza visual */
         #pdfExportArea { 
             display: block; width: 100%; margin: 0 auto; text-align: center; 
             background-color: #1e1e2f; color: #ffffff !important; padding: 20px; border-radius: 8px;
@@ -111,7 +110,7 @@
             <p>Control Histórico y Mensual</p>
         </div>
 
-        <!-- NUEVO: SELECTOR DE MES -->
+        <!-- SELECTOR DE MES -->
         <div class="month-selector-container">
             <input type="month" id="monthSelector" class="month-input" onchange="changeMonth()">
         </div>
@@ -155,7 +154,7 @@
             <div class="input-group">
                 <input type="text" id="expDesc" placeholder="Concepto (Ej: Supermercado)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <input type="number" id="expAmount" placeholder="$ Monto">
+                    <input type="number" id="expAmount" placeholder="$ Monto"> <!-- ID CORREGIDO -->
                     <select id="expCat">
                         <option value="Hogar">Hogar</option>
                         <option value="Comida">Comida</option>
@@ -224,8 +223,8 @@
 
         let incomesArr = [];
         let expensesArr = [];
-        let currentMonthDoc = ""; // ID del documento actual (ej: "2025-11")
-        let unsubscribe = null;   // Para detener la escucha al cambiar de mes
+        let currentMonthDoc = "";
+        let unsubscribe = null;
 
         const moneyFormat = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
         const syncIndicator = document.getElementById('syncIndicator');
@@ -242,7 +241,6 @@
 
         // --- INICIALIZACIÓN ---
         window.onload = function() {
-            // Establecer fecha actual en el selector
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -251,11 +249,9 @@
             const selector = document.getElementById('monthSelector');
             selector.value = currentIso;
             
-            // Cargar datos de este mes
             loadMonthData(currentIso);
         };
 
-        // --- CAMBIO DE MES ---
         function changeMonth() {
             const selector = document.getElementById('monthSelector');
             const newMonth = selector.value;
@@ -264,16 +260,11 @@
             }
         }
 
-        // --- CARGA DE DATOS (MÁQUINA DEL TIEMPO) ---
         function loadMonthData(monthIso) {
-            currentMonthDoc = monthIso; // Ej: "2025-11"
+            currentMonthDoc = monthIso;
             
-            // 1. Desconectar del mes anterior (si existe)
-            if (unsubscribe) {
-                unsubscribe();
-            }
+            if (unsubscribe) { unsubscribe(); }
 
-            // 2. Limpiar UI visualmente para efecto de carga
             incomesArr = [];
             expensesArr = [];
             updateUI();
@@ -282,8 +273,6 @@
 
             if (!db) return;
 
-            // 3. Conectar al nuevo mes
-            // NOTA: Ahora usamos el ID del mes como nombre del documento en Firebase
             unsubscribe = db.collection("finanzas").doc(currentMonthDoc).onSnapshot((doc) => {
                 enableButtons();
                 if (doc.exists) {
@@ -296,7 +285,6 @@
                     document.getElementById('recommendation').innerText = "Sincronizado";
                     document.getElementById('recommendation').style.color = "#00d26a";
                 } else {
-                    // Mes nuevo o vacío
                     incomesArr = [];
                     expensesArr = [];
                     updateUI();
@@ -317,7 +305,6 @@
             if(!db || !currentMonthDoc) return alert("Error de referencia.");
             syncIndicator.classList.remove('sync-active');
             
-            // Guardamos en el documento del MES SELECCIONADO
             db.collection("finanzas").doc(currentMonthDoc).set({
                 incomes: incomesArr,
                 expenses: expensesArr,
@@ -338,17 +325,18 @@
 
         function addExpense() {
             const desc = document.getElementById('expDesc').value;
-            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            // CORREGIDO: Leemos el ID correcto 'expAmount'
+            const amount = parseFloat(document.getElementById('expAmount').value);
             const cat = document.getElementById('expCat').value;
             const date = document.getElementById('expDate').value;
             if(!desc || isNaN(amount) || amount <= 0 || !date) return alert("Completa datos");
             expensesArr.push({ desc, amount, category: cat, date });
-            document.getElementById('expDesc').value = ''; document.getElementById('expenseAmount').value = ''; document.getElementById('expDate').value = '';
+            document.getElementById('expDesc').value = ''; document.getElementById('expAmount').value = ''; document.getElementById('expDate').value = '';
             saveToCloud();
         }
 
         function resetData() {
-            if(confirm(`¿Borrar todo lo de ${currentMonthDoc}? (No afecta otros meses)`)) { incomesArr=[]; expensesArr=[]; saveToCloud(); }
+            if(confirm(`¿Borrar todo lo de ${currentMonthDoc}?`)) { incomesArr=[]; expensesArr=[]; saveToCloud(); }
         }
 
         function renderLists() {
