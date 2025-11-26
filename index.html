@@ -69,17 +69,27 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
         .modal-content { background: var(--card-bg); color: var(--text-color); width: 95%; max-width: 700px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; border: 1px solid #3d84ff; }
         
-        /* Estilos PDF Ajustados */
-        #pdfExportArea { display: block; width: 100%; margin: 0; text-align: center; background-color: #1e1e2f; color: #ffffff !important; padding: 20px; border-radius: 8px; }
+        /* ESTILOS REPORTE PDF - Limpieza visual */
+        #pdfExportArea { 
+            display: block; 
+            width: 100%; 
+            margin: 0 auto; 
+            text-align: center; 
+            background-color: #1e1e2f; 
+            color: #ffffff !important; 
+            padding: 20px; 
+            border-radius: 8px;
+        }
         #pdfExportArea * { color: #ffffff !important; }
+        
         .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #3d84ff; padding-bottom: 15px; }
         .report-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; text-align: center; }
         .report-box { background: #121212; padding: 10px; border-radius: 8px; border: 1px solid #333; }
         
         .section-title { text-align: left; margin-top: 15px; margin-bottom: 5px; color: #3d84ff !important; font-size: 0.9rem; font-weight: bold; border-bottom: 1px solid #444; }
         .preview-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.8rem; }
-        .preview-table th { background-color: #3d84ff; padding: 8px; text-align: left; }
-        .preview-table td { border-bottom: 1px solid #444; padding: 8px; text-align: left; }
+        .preview-table th { background-color: #3d84ff; padding: 8px; text-align: left; color: white !important; }
+        .preview-table td { border-bottom: 1px solid #444; padding: 8px; text-align: left; color: white !important; }
         
         @media print { body { background-color: #121212 !important; } .container, button, .sync-status { display: none !important; } .modal-overlay { display: block !important; position: static; } .modal-content { border:none; width: 100%; } }
     </style>
@@ -365,20 +375,29 @@
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
 
-        // --- FUNCIÓN PDF CORREGIDA PARA EVITAR CORTES ---
+        // --- FUNCIÓN CLONADO (SOLUCIÓN DEFINITIVA DE CORTE) ---
         function downloadPDF() {
-            const element = document.getElementById('pdfExportArea');
+            // 1. Clonar el contenido que queremos imprimir
+            const originalElement = document.getElementById('pdfExportArea');
+            const clonedElement = originalElement.cloneNode(true);
+
+            // 2. Crear un contenedor temporal invisible y pegado a la izquierda (0,0)
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '750px'; // Ancho fijo perfecto para Carta
+            container.style.zIndex = '-9999'; // Detrás de todo
+            container.style.background = '#1e1e2f'; // Asegurar fondo
             
-            // Guardamos estilos originales
-            const originalWidth = element.style.width;
-            const originalMargin = element.style.margin;
-            const originalPadding = element.style.padding;
+            // Importante: Eliminar márgenes del clon para que no se mueva
+            clonedElement.style.margin = '0';
+            clonedElement.style.width = '100%';
+            
+            container.appendChild(clonedElement);
+            document.body.appendChild(container);
 
-            // CONFIGURACIÓN EXACTA PARA CARTA
-            element.style.width = '700px';  // Un poco menos de 8.5in para asegurar márgenes
-            element.style.margin = '0';     // Quitamos el auto-centrado para la foto
-            element.style.padding = '20px'; // Padding limpio
-
+            // 3. Configurar PDF
             const opt = {
                 margin:       0.5,
                 filename:     'Reporte_V3.pdf',
@@ -386,18 +405,16 @@
                 html2canvas:  { 
                     scale: 2, 
                     backgroundColor: '#1e1e2f',
-                    windowWidth: 800,
-                    x: 0, 
-                    scrollY: 0
+                    // Al usar el clon en (0,0), ya no necesitamos windowWidth ni trucos
+                    scrollY: 0,
+                    scrollX: 0
                 }, 
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                // Restauramos
-                element.style.width = originalWidth;
-                element.style.margin = originalMargin;
-                element.style.padding = originalPadding;
+            // 4. Generar y limpiar
+            html2pdf().set(opt).from(clonedElement).save().then(() => {
+                document.body.removeChild(container);
             });
         }
     </script>
